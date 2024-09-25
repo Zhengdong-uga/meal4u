@@ -1,0 +1,47 @@
+<svg width="23" height="24" viewBox="0 0 23 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Calendar">
+<rect id="Rectangle 2" x="1" y="2.68848" width="20.43" height="20.2615" rx="5" fill="white" stroke="black" stroke-width="1.5"/>
+<g id="Line">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M1 8.31673H21.43Z" fill="white"/>
+<path d="M1 8.31673H21.43" stroke="black" stroke-width="1.5" stroke-linejoin="round"/>
+</g>
+<g id="Line_2">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M16.3224 1L16.3224 4.37692Z" fill="white"/>
+<path d="M16.3224 1L16.3224 4.37692" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="Line_3">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M6.10754 1L6.10754 4.37692Z" fill="white"/>
+<path d="M6.10754 1L6.10754 4.37692" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="Group 220">
+<g id="Group 218">
+<g id="Line_4">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M4.97266 12.8193H6.10766Z" fill="white"/>
+<path d="M4.97266 12.8193H6.10766" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="Line_5">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M10.6475 12.8193H11.7825Z" fill="white"/>
+<path d="M10.6475 12.8193H11.7825" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="Line_6">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M16.3228 12.8193H17.4578Z" fill="white"/>
+<path d="M16.3228 12.8193H17.4578" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</g>
+<g id="Group 219">
+<g id="Line_7">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M4.97266 17.3217H6.10766Z" fill="white"/>
+<path d="M4.97266 17.3217H6.10766" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="Line_8">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M10.6475 17.3217H11.7825Z" fill="white"/>
+<path d="M10.6475 17.3217H11.7825" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="Line_9">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M16.3228 17.3217H17.4578Z" fill="white"/>
+<path d="M16.3228 17.3217H17.4578" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</g>
+</g>
+</g>
+</svg>
