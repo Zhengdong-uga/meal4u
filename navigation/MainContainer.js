@@ -1,5 +1,4 @@
 import * as React from 'react';
-import {View, Text} from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -9,13 +8,16 @@ import HomeScreen from './screens/HomeScreen';
 import CalendarScreen from './screens/CalendarScreen';
 import AIScreen from './screens/AIScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import SavedRecipesScreen from './screens/SavedRecipesScreen'; // Import your new screen
+import GeneratedRecipeScreen from './screens/GeneratedRecipeScreen'; 
 
 
-//Screen names
+// Screen names
 const homeName = "Home";
 const calendarName = "Calendar";
 const aiName = "AI";
 const profileName = "Profile";
+const savedRecipesName = "SavedRecipes";  // Declare the new screen name
 
 const Tab = createBottomTabNavigator();
 
@@ -31,32 +33,41 @@ function MainContainer() {
 
             if (rn === homeName) {
               iconName = focused ? 'home' : 'home-outline';
-
             } else if (rn === calendarName) {
               iconName = focused ? 'calendar' : 'calendar-outline';
-
             } else if (rn === aiName) {
               iconName = focused ? 'rocket' : 'rocket-outline';
-
-            }else if (rn === profileName) {
-                iconName = focused ? 'person' : 'person-outline';
+            } else if (rn === profileName) {
+              iconName = focused ? 'person' : 'person-outline';
             }
 
-            // You can return any component that you like here!
             return <Ionicons name={iconName} size={size} color={color} />;
           },
+          tabBarActiveTintColor: 'black',
+          tabBarInactiveTintColor: 'grey',
+          tabBarLabelStyle: { fontSize: 14 },
+          tabBarStyle: { height: 80 },
+          tabBarIconStyle: { marginTop: 5 },
         })}
-        tabBarOptions={{
-          activeTintColor: 'black',
-          inactiveTintColor: 'grey',
-          labelStyle: { fontSize: 14 },
-          style: { height: 70}
-        }}>
-
+      >
         <Tab.Screen name={homeName} component={HomeScreen} />
         <Tab.Screen name={calendarName} component={CalendarScreen} />
         <Tab.Screen name={aiName} component={AIScreen} />
         <Tab.Screen name={profileName} component={ProfileScreen} />
+        
+        {/* SavedRecipesScreen is not part of the bottom tab bar, so we hide it */}
+        <Tab.Screen
+          name={savedRecipesName}
+          component={SavedRecipesScreen}
+          options={{ tabBarButton: () => null }}  // Hide from tab bar
+        />
+        {/* 隐藏生成页面 */}
+        <Tab.Screen
+            name="GeneratedRecipe"
+            component={GeneratedRecipeScreen}
+            options={{ tabBarButton: () => null }}  // Hide from tab bar
+        />
+
 
       </Tab.Navigator>
     </NavigationContainer>
