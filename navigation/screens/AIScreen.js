@@ -3,6 +3,8 @@ import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet } from 'r
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import dayjs from 'dayjs'; // 用于获取当前日期
 
+import { ask_gemini } from '/Users/zhengdongpeng/mealingful/demo1/backend/api.js';
+
 export default function AIScreen({ navigation }) {
     const [ingredients, setIngredients] = useState([]);
     const [ingredientInput, setIngredientInput] = useState('');
@@ -23,47 +25,48 @@ export default function AIScreen({ navigation }) {
         setIngredients(ingredients.filter(item => item !== ingredient));
     };
 
-    // 生成菜谱并导航到生成页面
-    const handleGenerateRecipe = () => {
-        let generatedRecipe = {
-            name: 'Keto Chicken & Broccoli Curry',
-            description: 'This recipe combines your available ingredients with Indian flavors while adhering to your keto diet, calorie restrictions, and allergies.',
+ // 生成菜谱并导航到生成页面 (fetch recipe from backend)
+ const handleGenerateRecipe = async () => {
+    let allergies = { 'peanut': 0, 'shellfish': 1, 'strawberries': 1, 'tomatoes': 1, 'chocolate': 0 };
+    let diet = 'keto';
+    let calorieRestriction = 1700;
+    let specialRequests = specialRequest;
+    let time = '30 minutes';
+    let goal = 'gain muscle';
+    let dishType = mealType || 'Indian';
+    let dislikes = [];
+
+    try {
+        // Call the backend function to get a generated recipe
+        const result = await ask_gemini(allergies, diet, calorieRestriction, ingredients, specialRequests, time, goal, dishType, dislikes);
+        
+        // Use the result from ask_gemini for the recipe data
+        const generatedRecipe = {
+            name: 'Generated Recipe',
+            description: result, // Use the result from ask_gemini
             time: '30 mins',
             difficulty: 'Medium',
             ingredients: [
-                { name: 'Coconut oil', amount: '1 tbsp' },
-                { name: 'Onion', amount: '1 large, diced' },
-                { name: 'Garlic', amount: '2 cloves, minced' },
-                { name: 'Ginger', amount: '1 inch, minced' },
-                { name: 'Chicken thighs', amount: '1 lb' },
-                { name: 'Curry powder', amount: '1 tbsp' },
-                { name: 'Turmeric powder', amount: '1/2 tsp' },
-                { name: 'Cayenne pepper', amount: '1/4 tsp (optional, for heat)' },
-                { name: 'Coconut milk', amount: '1/2 cup, full-fat' },
-                { name: 'Chicken broth', amount: '1 cup' },
-                { name: 'Broccoli', amount: '1 large head, cut into florets' },
-                { name: 'Salt and pepper', amount: 'to taste' },
-                { name: 'Cilantro', amount: 'Fresh, chopped (optional, for garnish)' }
+                { name: 'Onion', amount: '1 piece' },
+                { name: 'Beef', amount: '200g' },
             ],
             instructions: [
-                'Sauté aromatics: Heat coconut oil in a large skillet or pot over medium heat. Add onion and sauté until softened, about 5 minutes. Stir in garlic and ginger, cook for another minute until fragrant.',
-                'Cook chicken: Add chicken pieces to the pan and cook until browned on all sides.',
-                'Bloom spices: Sprinkle in curry powder, turmeric, and cayenne pepper (if using). Cook for 1 minute, stirring constantly, until fragrant.',
-                'Simmer: Pour in coconut milk and chicken broth. Stir well to combine and bring the mixture to a gentle simmer.',
-                'Add broccoli: Add broccoli florets to the pan. Cover and let it simmer for 10-15 minutes, or until the chicken is cooked through and the broccoli is tender.',
-                'Season & serve: Season generously with salt and pepper to taste. Garnish with fresh cilantro (optional) and serve hot.'
+                'Step 1: Prepare the ingredients as described in the result.',
+                'Step 2: Follow the steps provided in the result.'
             ],
             notes: [
-                'This recipe provides a good amount of protein for muscle gain, stays within your 1700 calorie restriction, and aligns with your keto diet.',
-                'Always double-check ingredient labels to ensure they do not contain your allergens.',
-                'You can adjust the spice level by adding more or less cayenne pepper.',
-                'Serve this dish with cauliflower rice or a side salad for a complete meal.'
+                'The recipe was generated based on your input.'
             ]
-            
         };
 
+        // Navigate to GeneratedRecipe screen with the recipe data
         navigation.navigate('GeneratedRecipe', { recipe: generatedRecipe });
-    };
+
+    } catch (error) {
+        console.error("Error generating recipe:", error);
+    }
+};
+
 
     // 获取今天的日期和周几
     const dayOfWeek = dayjs().format('dddd'); // 星期几
