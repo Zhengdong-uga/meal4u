@@ -5,6 +5,7 @@
 </h1>
 
 ## 📋 Requirements
+Follow the instruction and install the node: https://github.com/nvm-sh/nvm
 
 # Prep
 
