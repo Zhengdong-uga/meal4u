@@ -18,6 +18,7 @@ $ git clone https://github.com/Zhengdong-uga/meal4u.git
 $ npm install
 
 ## Packages to install
+npm install expo@~51.0.37
 
 npm install @google/generative-ai
 
