@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import { savedRecipes } from '/Users/zhengdongpeng/mealingful/demo1/data/savedRecipeData.js'
+import { savedRecipes } from '../../data/savedRecipeData.js'
 
 
 

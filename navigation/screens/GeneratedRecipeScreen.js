@@ -6,7 +6,6 @@ import { useNavigation } from '@react-navigation/native';
 export default function GeneratedRecipeScreen({ route, navigation }) {
     const { recipe } = route.params;  // receiving the generated recipe
     const [activeTab, setActiveTab] = useState('details');  // Track active tab ('details' or 'instructions')
-
     // Save Recipe functionality
     const handleSaveRecipe = () => {
         navigation.navigate('SavedRecipes', { newRecipe: recipe });
@@ -58,7 +57,7 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
                                 </View>
                             ))
                         ) : (
-                            <Text>{recipe.description}</Text>  
+                            <Text>{recipe.description}</Text>
                         )}
                     </ScrollView>
                 ) : (
@@ -67,12 +66,11 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
                         {recipe.ingredients && recipe.ingredients.length > 0 ? (
                             recipe.ingredients.map((item, index) => (
                                 <View key={index} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                                    <Text>{item.name}</Text>
-                                    <Text>{item.amount}</Text>
+                                    <Text>{item}</Text> {/* Simply display the string here */}
                                 </View>
                             ))
                         ) : (
-                            <Text>{recipe.description}</Text>  
+                            <Text>{recipe.description}</Text>
                         )}
                     </ScrollView>
                 )}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet } from 'react-native';
-import { savedRecipes } from '/Users/zhengdongpeng/mealingful/demo1/data/savedRecipeData.js'
+import { savedRecipes } from '../../data/savedRecipeData.js'
 
 export default function ProfileScreen({ navigation }) {
     const [showAll, setShowAll] = useState(false);
@@ -36,7 +36,7 @@ export default function ProfileScreen({ navigation }) {
                     data={showAll ? savedRecipes : savedRecipes.slice(0, 2)}
                     renderItem={renderRecipeItem}
                     keyExtractor={item => item.id}
-                    numColumns={2}  
+                    numColumns={2}
                     columnWrapperStyle={styles.row}
                 />
                 <TouchableOpacity onPress={() => setShowAll(!showAll)}>
