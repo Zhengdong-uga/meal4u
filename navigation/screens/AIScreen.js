@@ -81,6 +81,48 @@ export default function AIScreen({ navigation }) {
         return ingredients;
     }
 
+    function parseInstructions(recipe) {
+        let stepsStart = recipe.indexOf("**Steps of preparation:**");
+        if (stepsStart === -1) {
+            stepsStart = recipe.indexOf("**Steps of Preparation:**")
+        };
+
+        let nutritionalStart = recipe.indexOf("**Nutritional information (approximate):**");
+        if (nutritionalStart === -1) {
+            nutritionalStart = recipe.indexOf("**Estimated Nutritional Information:**");
+        };
+        if (nutritionalStart === -1) {
+            nutritionalStart = recipe.indexOf("**Nutritional Information (per serving):**");
+        };
+        if (nutritionalStart === -1) {
+            nutritionalStart = recipe.indexOf("**Nutritional Information (approximate):**");
+        };
+        if (nutritionalStart === -1) {
+            nutritionalStart = recipe.indexOf("**Nutritional Information (Approximate):**");
+        };
+        if (nutritionalStart === -1) {
+            nutritionalStart = recipe.indexOf("**Approximate Nutritional Information (using generic ingredients):**");
+        };
+        if (nutritionalStart === -1) {
+            nutritionalStart = recipe.indexOf("**Nutritional Information (Approximate, per serving):**")
+        };
+
+        console.log(stepsStart);
+        console.log(nutritionalStart);
+
+        const instructionsText = recipe.slice(stepsStart + 26, nutritionalStart).trim();
+
+        const instructions = instructionsText
+            .split("\n") // Split by new lines
+            .map(line => line.trim()) // Remove extra spaces
+            // .filter(line => line.startsWith('*')) // Keep only lines that start with '*'
+            // .map(line => line.replace('*', '').trim()) // Remove the '*' and extra spaces again
+            .filter(line => line.length > 0) // Remove any empty strings
+            .map(line => line.replace(/^\d+\.\s*/, '')); // Remove leading numbers like 1., 2., etc.
+
+        return instructions;
+    }
+
 
     // 生成菜谱并导航到生成页面 (fetch recipe from backend)
     const handleGenerateRecipe = async () => {
@@ -101,6 +143,8 @@ export default function AIScreen({ navigation }) {
             console.log(name);
             const generatedIngredients = parseIngredients(result);
             console.log(generatedIngredients);
+            const generatedInstructions = parseInstructions(result);
+            console.log(generatedInstructions);
 
 
             // ## Name: Keto Kung Pao Chicken Lettuce Wraps
@@ -154,10 +198,7 @@ export default function AIScreen({ navigation }) {
                 time: '30 mins',
                 difficulty: 'Medium',
                 ingredients: generatedIngredients,
-                instructions: [
-                    'Step 1: Prepare the ingredients as described in the result.',
-                    'Step 2: Follow the steps provided in the result.'
-                ],
+                instructions: generatedInstructions,
                 notes: [
                     'The recipe was generated based on your input.'
                 ]
