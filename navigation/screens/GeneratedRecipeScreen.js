@@ -45,7 +45,7 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
                     </TouchableOpacity>
                 </View>
 
-                {/* Content Switch based on active tab */}
+                
                 {activeTab === 'instructions' ? (
                     <ScrollView style={styles.detailsOrInstructions}>
                         <Text>Instructions:</Text>
@@ -66,7 +66,7 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
                         {recipe.ingredients && recipe.ingredients.length > 0 ? (
                             recipe.ingredients.map((item, index) => (
                                 <View key={index} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                                    <Text>{item}</Text> {/* Simply display the string here */}
+                                    <Text>{item}</Text> 
                                 </View>
                             ))
                         ) : (

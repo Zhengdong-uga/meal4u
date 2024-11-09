@@ -46,6 +46,11 @@ export default function CalendarScreen({ navigation, route }) {
     setSelectedDate(day.dateString); // Set the selected date
   }, []);
 
+  //  navigation.setOptions({
+  //       headerTransparent: true,
+  //       headerTitle: '',
+  //   });
+
   return (
     <View style={styles.container}>
       {/* Calendar */}

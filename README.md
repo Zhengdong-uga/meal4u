@@ -34,6 +34,14 @@ npm install react-native-calendars
 
 npm install @react-navigation/bottom-tabs
 
+npm i react-native-heroicons react-native-svg
+
+npm install react-native-responsive-screen
+
+npm install @react-navigation/drawer
+
+npm install react-native-gesture-handler
+
 
 ## Run the App
 npx expo start
