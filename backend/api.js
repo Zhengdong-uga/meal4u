@@ -24,7 +24,7 @@ const ask_gemini = async (allergies, diet, calorieRestriction, ingredients, spec
 
     let prompt = prompting.generatePrompt(allergies, diet, calorieRestriction, ingredients, specialRequests, time, goal, dishType, dislikes);
 
-    const apiKey = '-------';
+    const apiKey = 'AIzaSyBAa8I0mMNTTlxtPrTW5CQB-CwmDDBMX5E';
     const genAI = new GoogleGenerativeAI(apiKey);
 
     // const {

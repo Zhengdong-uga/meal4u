@@ -46,7 +46,7 @@ export default function ProfileScreen({ navigation }) {
                 </TouchableOpacity>
             </View>
 
-            {/* Achievements Section */}
+            {/* Achievements Section
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Achievements</Text>
                 <View style={styles.achievementsContainer}>
@@ -55,7 +55,7 @@ export default function ProfileScreen({ navigation }) {
                     <Achievement color="#90CAF9" value="50-60%" label="Food Waste Reduced" shapeStyle={styles.starAchievement} />
                     <Achievement color="#F48FB1" value="$800" label="Money Saved" shapeStyle={styles.squareAchievement} />
                 </View>
-            </View>
+            </View> */}
 
             {/* Saved Recipes Section */}
             <View style={styles.recipeSection}>

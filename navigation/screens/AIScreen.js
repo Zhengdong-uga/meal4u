@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import dayjs from 'dayjs'; // 用于获取当前日期
+import dayjs from 'dayjs';
 
 import { ask_gemini } from '../../backend/api.js';
 
@@ -11,18 +11,57 @@ export default function AIScreen({ navigation }) {
     const [specialRequest, setSpecialRequest] = useState('');
     const [mealType, setMealType] = useState('');
     const [suggestionsNeeded, setSuggestionsNeeded] = useState(null);
+    const [preferencesModalVisible, setPreferencesModalVisible] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [preferences, setPreferences] = useState({
+        prepareTime: 'Under 30 mins',
+        eatingGoal: 'Maintain',
+        dietType: '',
+        foodRestrictions: '',
+        dishType: '',
+        dislikedFoods: '',
+    });
 
-    // 添加食材
+    const options = {
+        prepareTime: ['Under 15 mins', 'Under 30 mins', '1 hour'],
+        eatingGoal: ['Lose fat', 'Gain weight', 'Maintain'],
+        dietType: ['Vegetarian', 'Vegan', 'Keto', 'Paleo'],
+        foodRestrictions: ['Gluten-Free', 'Dairy-Free', 'Nut-Free'],
+        dishType: ['Asian', 'American', 'Mediterranean', 'Indian'],
+        dislikedFoods: ['Onion', 'Garlic', 'Peanuts', 'Shellfish'],
+    };
+
     const handleAddIngredient = () => {
         if (ingredientInput.trim() !== '') {
-            setIngredients([...ingredients, ingredientInput.trim()]);
+            const updatedIngredients = [...ingredients, ingredientInput.trim()];
+            setIngredients(updatedIngredients);
+            console.log("Updated ingredients:", updatedIngredients);
             setIngredientInput('');
         }
     };
 
-    // 删除食材
     const handleRemoveIngredient = (ingredient) => {
         setIngredients(ingredients.filter(item => item !== ingredient));
+    };
+
+    const handlePreferenceSelect = (key, value) => {
+        setPreferences((prev) => ({ ...prev, [key]: value }));
+    };
+
+    const savePreferences = () => {
+        setPreferencesModalVisible(false);
+        alert('Preferences applied!');
+    };
+
+    const clearPreferences = () => {
+        setPreferences({
+            prepareTime: '',
+            eatingGoal: '',
+            dietType: '',
+            foodRestrictions: '',
+            dishType: '',
+            dislikedFoods: '',
+        });
     };
 
     function extractRecipeName(recipe) {
@@ -36,162 +75,78 @@ export default function AIScreen({ navigation }) {
 
         return recipeName;
     }
+    
 
     function parseIngredients(recipe) {
-        // Find the start and end of the ingredients section
         const ingredientsStart = recipe.indexOf("**Ingredients:**");
         const stepsStart = recipe.indexOf("**Steps of Preparation:**");
-
-        // Extract the ingredients list text
         const ingredientsText = recipe.slice(ingredientsStart + 15, stepsStart).trim();
-
-        // Split the ingredients into individual lines and clean them
-        const ingredients = ingredientsText
-            .split("\n") // Split by new lines
-            .map(line => line.trim()) // Remove extra spaces
-            .filter(line => line.startsWith('*')) // Keep only lines that start with '*'
-            .map(line => line.replace('*', '').trim()) // Remove the '*' and extra spaces again
-            .filter(line => line.length > 0); // Remove any empty strings
-
-        return ingredients;
+        return ingredientsText
+            .split("\n")
+            .map(line => line.trim())
+            .filter(line => line.startsWith('*'))
+            .map(line => line.replace('*', '').trim())
+            .filter(line => line.length > 0);
     }
 
-    // Function to parse the ingredients section
-    function parseIngredients(recipe) {
-        // Find the start and end of the ingredients section
-        const ingredientsStart = recipe.indexOf("**Ingredients:**");
-        let stepsStart = recipe.indexOf("**Steps of preparation:**");
-        if (stepsStart === -1) {
-            stepsStart = recipe.indexOf("**Steps of Preparation:**")
-        };
-
-        console.log(stepsStart);
-
-        // Extract the ingredients list text
-        const ingredientsText = recipe.slice(ingredientsStart + 15, stepsStart).trim();
-
-        // Split the ingredients into individual lines and clean them
-        const ingredients = ingredientsText
-            .split("\n") // Split by new lines
-            .map(line => line.trim()) // Remove extra spaces
-            .filter(line => line.startsWith('*')) // Keep only lines that start with '*'
-            .map(line => line.replace('*', '').trim()) // Remove the '*' and extra spaces again
-            .filter(line => line.length > 0); // Remove any empty strings
-
-        return ingredients;
-    }
-
-
-    // 生成菜谱并导航到生成页面 (fetch recipe from backend)
     const handleGenerateRecipe = async () => {
-        let allergies = { 'peanut': 0, 'shellfish': 1, 'strawberries': 1, 'tomatoes': 1, 'chocolate': 0 };
-        let diet = 'keto';
+        let allergies = { peanut: 0, shellfish: 1, strawberries: 1, tomatoes: 1, chocolate: 0 };
+        let diet = preferences.dietType;
         let calorieRestriction = 1700;
-        let specialRequests = specialRequest;
-        let time = '30 minutes';
-        let goal = 'gain muscle';
-        let dishType = mealType || 'Indian';
-        let dislikes = [];
+        let time = preferences.prepareTime;
+        let goal = preferences.eatingGoal;
+        let dishType = mealType || preferences.dishType;
+        let dislikes = preferences.dislikedFoods.split(',');
+
+        setLoading(true);
 
         try {
-            // Call the backend function to get a generated recipe
-            const result = await ask_gemini(allergies, diet, calorieRestriction, ingredients, specialRequests, time, goal, dishType, dislikes);
-            console.log(result);
+            const result = await ask_gemini(allergies, diet, calorieRestriction, ingredients, specialRequest, time, goal, dishType, dislikes);
             const name = extractRecipeName(result);
-            console.log(name);
             const generatedIngredients = parseIngredients(result);
-            console.log(generatedIngredients);
 
-
-            // ## Name: Keto Kung Pao Chicken Lettuce Wraps
-
-            // This recipe provides a delicious and allergy-friendly keto lunch option packed with protein for muscle gain and adapted for your Chinese cuisine preference.
-
-            // **Ingredients:**
-
-            // * 1 tbsp avocado oil
-            // * 1 lb boneless, skinless chicken breast, cut into 1-inch cubes
-            // * 1/2 cup chopped onion
-            // * 1 cup chopped celery 
-            // * 1 cup chopped zucchini 
-            // * 1/4 cup low-sodium soy sauce (or coconut aminos for soy-free)
-            // * 2 tbsp rice vinegar (or apple cider vinegar)
-            // * 1 tbsp toasted sesame oil
-            // * 1/2 tsp ground ginger
-            // * 1/4 tsp red pepper flakes (optional)
-            // * 1/4 cup chopped cashews, toasted
-            // * 6 large lettuce leaves (butter lettuce or romaine work well)
-            // * 2 tbsp chopped green onions, for garnish
-
-            // **Steps of preparation:**
-
-            // 1. **Prep:** Chop the chicken, onion, celery, and zucchini. Whisk together the soy sauce, rice vinegar, sesame oil, ginger, and red pepper flakes in a small bowl.
-            // 2. **Cook chicken:** Heat avocado oil in a large skillet or wok over medium-high heat. Add the chicken and cook until browned and cooked through, about 5-7 minutes. 
-            // 3. **Sauté vegetables:** Add the onion, celery, and zucchini to the skillet and cook until softened, about 3-5 minutes.
-            // 4. **Sauce:** Pour the sauce mixture into the skillet and bring to a simmer. Cook until the sauce thickens slightly, about 1-2 minutes.
-            // 5. **Assemble:** Spoon the chicken and vegetable mixture into lettuce leaves. Top with cashews and green onions. 
-
-            // **Nutritional information (approximate):**
-
-            // * Calories: 550-600kcal
-            // * Protein: 50-60g
-            // * Carbs: 15-20g (Net Carbs: 10-15g)
-            // * Fat: 35-40g
-
-            // **Tips:**
-
-            // * To toast cashews, spread them in a single layer on a baking sheet and bake in a preheated 350°F oven for 5-7 minutes, or until lightly golden brown.
-            // * You can adjust the amount of red pepper flakes to your spice preference. 
-            // * This recipe can be easily doubled or tripled to serve a crowd.
-
-            // **Enjoy!**
-
-
-            // Use the result from ask_gemini for the recipe data
             const generatedRecipe = {
                 name: name,
-                description: 'description', // Use the result from ask_gemini
-                time: '30 mins',
+                description: 'description',
+                time: time,
                 difficulty: 'Medium',
                 ingredients: generatedIngredients,
-                instructions: [
-                    'Step 1: Prepare the ingredients as described in the result.',
-                    'Step 2: Follow the steps provided in the result.'
-                ],
-                notes: [
-                    'The recipe was generated based on your input.'
-                ]
+                instructions: ['Step 1: Prepare the ingredients.', 'Step 2: Follow the steps provided.'],
+                notes: ['The recipe was generated based on your input.'],
             };
 
-            // Navigate to GeneratedRecipe screen with the recipe data
             navigation.navigate('GeneratedRecipe', { recipe: generatedRecipe });
-
         } catch (error) {
             console.error("Error generating recipe:", error);
+            alert("Failed to generate recipe. Please try again.");
+        } finally {
+            setLoading(false);
         }
     };
 
-
-    // 获取今天的日期和周几
-    const dayOfWeek = dayjs().format('dddd'); // 星期几
-    const date = dayjs().format('MMMM D'); // 月份和日期
+    const dayOfWeek = dayjs().format('dddd');
+    const date = dayjs().format('MMMM D');
+    
 
     return (
         <View style={styles.container}>
-            {/* 日期和调整按钮 */}
             <View style={styles.header}>
                 <View style={styles.dateContainer}>
                     <Text style={styles.dayText}>{dayOfWeek}</Text>
                     <Text style={styles.dateText}>{date}</Text>
                 </View>
-                <TouchableOpacity style={styles.preferenceButton}>
+                <TouchableOpacity
+                    style={styles.preferenceButton}
+                    onPress={() => setPreferencesModalVisible(true)}
+                >
                     <Ionicons name="options-outline" size={30} color="black" />
                 </TouchableOpacity>
             </View>
 
-            {/* 食材输入区域 */}
             <View style={styles.inputSection}>
-                <Text style={styles.question}>Which ingredients do you currently have?</Text>
+                <Text style={styles.question}>
+
+                </Text>
                 <View style={styles.ingredientInputContainer}>
                     <TextInput
                         style={styles.ingredientInput}
@@ -214,7 +169,6 @@ export default function AIScreen({ navigation }) {
                 </View>
             </View>
 
-            {/* 其他问题 - 提供其他食材建议 */}
             <View style={styles.inputSection}>
                 <Text style={styles.question}>Would you like some suggestions for other ingredients to consider?</Text>
                 <View style={styles.optionContainer}>
@@ -222,29 +176,27 @@ export default function AIScreen({ navigation }) {
                         style={[styles.optionButton, suggestionsNeeded === true ? styles.selectedOption : null]}
                         onPress={() => setSuggestionsNeeded(true)}
                     >
-                        <Text style={styles.optionText}>Yes</Text>
+                        <Text style={[styles.optionText, suggestionsNeeded === true && styles.selectedOptionText]}>Yes</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.optionButton, suggestionsNeeded === false ? styles.selectedOption : null]}
                         onPress={() => setSuggestionsNeeded(false)}
                     >
-                        <Text style={styles.optionText}>No</Text>
+                        <Text style={[styles.optionText, suggestionsNeeded === false && styles.selectedOptionText]}>No</Text>
                     </TouchableOpacity>
                 </View>
             </View>
 
-            {/* 特殊请求 */}
             <View style={styles.inputSection}>
                 <Text style={styles.question}>Special Request?</Text>
                 <TextInput
                     style={styles.specialRequestInput}
-                    placeholder="e.g type what kind of food do you like such as Chinese food, seafood, etc."
+                    placeholder="e.g type what kind of food you like such as Chinese food, seafood, etc."
                     value={specialRequest}
                     onChangeText={setSpecialRequest}
                 />
             </View>
 
-            {/* 早餐/午餐/晚餐 */}
             <View style={styles.inputSection}>
                 <Text style={styles.question}>Which meal is this for?</Text>
                 <View style={styles.optionContainer}>
@@ -254,16 +206,72 @@ export default function AIScreen({ navigation }) {
                             style={[styles.optionButton, mealType === type ? styles.selectedOption : null]}
                             onPress={() => setMealType(type)}
                         >
-                            <Text style={styles.optionText} numberOfLines={1}>{type}</Text>
+                            <Text style={[styles.optionText, mealType === type && styles.selectedOptionText]}>{type}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
             </View>
 
-            {/* 生成食谱按钮 */}
-            <TouchableOpacity style={styles.generateButton} onPress={handleGenerateRecipe}>
-                <Text style={styles.generateButtonText}>Generate Recipe</Text>
+            <TouchableOpacity 
+                style={styles.generateButton} 
+                onPress={handleGenerateRecipe}
+                disabled={loading}
+            >
+                {loading ? (
+                    <ActivityIndicator size="small" color="white" />
+                ) : (
+                    <Text style={styles.generateButtonText}>Generate Recipe</Text>
+                )}
             </TouchableOpacity>
+
+            <Modal
+                visible={preferencesModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setPreferencesModalVisible(false)}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Recipe Preference</Text>
+
+                        {Object.entries(options).map(([key, values]) => (
+                            <View key={key}>
+                                <Text style={styles.sectionTitle}>{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
+                                <View style={styles.optionsContainer}>
+                                    {values.map((option) => (
+                                        <TouchableOpacity
+                                            key={option}
+                                            style={[
+                                                styles.option,
+                                                preferences[key] === option && styles.selectedOption,
+                                            ]}
+                                            onPress={() => handlePreferenceSelect(key, option)}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.optionText,
+                                                    preferences[key] === option && styles.selectedOptionText,
+                                                ]}
+                                            >
+                                                {option}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+                        ))}
+
+                        <View style={styles.buttonsContainer}>
+                            <TouchableOpacity style={styles.clearButton} onPress={clearPreferences}>
+                                <Text style={styles.clearButtonText}>Clear All</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.applyButton} onPress={savePreferences}>
+                                <Text style={styles.applyButtonText}>Apply</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -334,16 +342,18 @@ const styles = StyleSheet.create({
         marginHorizontal: 5,
         borderRadius: 10,
         alignItems: 'center',
-        justifyContent: 'center',  // 垂直居中
+        justifyContent: 'center',
     },
     selectedOption: {
         backgroundColor: 'black',
     },
     optionText: {
-        color: 'white',
+        color: 'black',
         fontWeight: 'bold',
         textAlign: 'center',
-        flexWrap: 'nowrap',  // 禁止换行
+    },
+    selectedOptionText: {
+        color: 'white',
     },
     specialRequestInput: {
         borderWidth: 1,
@@ -359,11 +369,79 @@ const styles = StyleSheet.create({
         padding: 15,
         borderRadius: 10,
         alignItems: 'center',
+        justifyContent: 'center',
         marginTop: 20,
+        height: 50, // Fixed height to prevent button size change
     },
     generateButtonText: {
         color: 'white',
         fontSize: 18,
+        fontWeight: 'bold',
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 20,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 20,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginVertical: 10,
+    },
+    optionsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginBottom: 20,
+    },
+    option: {
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 20,
+        padding: 10,
+        margin: 5,
+    },
+    selectedOption: {
+        backgroundColor: 'black',
+        borderColor: 'black',
+    },
+    optionText: {
+        color: 'black',
+    },
+    selectedOptionText: {
+        color: 'white',
+    },
+    buttonsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 20,
+    },
+    clearButton: {
+        backgroundColor: '#ddd',
+        padding: 10,
+        borderRadius: 10,
+    },
+    clearButtonText: {
+        color: '#000',
+        fontWeight: 'bold',
+    },
+    applyButton: {
+        backgroundColor: 'black',
+        padding: 10,
+        borderRadius: 10,
+    },
+    applyButtonText: {
+        color: 'white',
         fontWeight: 'bold',
     },
 });
