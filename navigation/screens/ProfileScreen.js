@@ -3,9 +3,13 @@ import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, ScrollView, 
 import Icon from 'react-native-vector-icons/Ionicons';
 import { savedRecipes } from '../../data/savedRecipeData.js';
 
+import { getAuth, signOut } from 'firebase/auth';
+import firebaseApp from '../../backend/src/firebase'; // Adjust the path as necessary
+
 export default function ProfileScreen({ navigation }) {
     const [showAllRecipes, setShowAllRecipes] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
+    auth = getAuth(firebaseApp);
 
     useEffect(() => {
         navigation.setOptions({
@@ -32,6 +36,21 @@ export default function ProfileScreen({ navigation }) {
         </TouchableOpacity>
     );
 
+    // Logout function
+    const logout = () => {
+        signOut(auth)
+            .then(() => {
+                // Successfully logged out
+                Alert.alert('Logged out', 'You have been logged out successfully');
+                // Optionally, navigate to the login page or handle other state updates
+            })
+            .catch((error) => {
+                // Handle sign out error
+                console.error('Error signing out: ', error);
+                Alert.alert('Logout Error', error.message);
+            });
+    };
+
     return (
         <ScrollView style={styles.container}>
             {/* Profile Section */}
@@ -41,6 +60,7 @@ export default function ProfileScreen({ navigation }) {
                 </View>
                 <Text style={styles.name}>Zhengdong Peng</Text>
                 <Text style={styles.email}>Asihfiix@gmail.com</Text>
+                {/* <TouchableOpacity style={styles.editButton} onPress={() => setModalVisible(true)}> */}
                 <TouchableOpacity style={styles.editButton} onPress={() => setModalVisible(true)}>
                     <Text style={styles.editButtonText}>Edit Profile</Text>
                 </TouchableOpacity>
@@ -113,7 +133,7 @@ export default function ProfileScreen({ navigation }) {
                                 </TouchableOpacity>
                             ))}
                         </View>
-                        <TouchableOpacity style={styles.logoutButton} onPress={() => setModalVisible(false)}>
+                        <TouchableOpacity style={styles.logoutButton} onPress={logout}>
                             <Text style={styles.logoutButtonText}>Log out</Text>
                         </TouchableOpacity>
                     </ScrollView>
@@ -181,8 +201,8 @@ const styles = StyleSheet.create({
     },
     achievementsContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-around', 
-        flexWrap: 'nowrap', 
+        justifyContent: 'space-around',
+        flexWrap: 'nowrap',
         marginBottom: 10,
     },
     achievement: {
@@ -292,6 +312,6 @@ const styles = StyleSheet.create({
     },
     logoutButtonText: {
         color: 'black',
-        
+
     },
 });

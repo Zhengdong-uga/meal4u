@@ -29,8 +29,8 @@ const ask_gemini = (allergies, diet, calorieRestriction, ingredients, specialReq
         HarmBlockThreshold,
     } = require("@google/generative-ai");
 
-   
-    const genAI = new GoogleGenerativeAI("-----");
+
+    const genAI = new GoogleGenerativeAI("");
 
     const model = genAI.getGenerativeModel({
         model: "gemini-1.5-pro",
