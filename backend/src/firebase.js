@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
-// import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
     // Refer to Discord
@@ -12,5 +13,8 @@ if (!getApps().length) {
     firebaseApp = getApps()[0];
 }
 
-export default firebaseApp;
-// const auth = getAuth(app);
+// export default firebaseApp;
+const auth = getAuth(firebaseApp);
+const firestore = getFirestore(firebaseApp);
+
+export { auth, firestore };

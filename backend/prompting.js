@@ -3,10 +3,8 @@ function generatePrompt(allergies, diet, calorieRestriction, ingredients, specia
 
     // Handle allergies
     function allergiesPrompt(allergies) {
-        const allergiesList = Object.keys(allergies).filter(key => allergies[key] === 1);
-
-        if (allergiesList.length > 0) {
-            return `I have allergies to ${allergiesList.join(', ')}.`;
+        if (allergies.length > 0) {
+            return `I have allergies to ${allergies.join(', ')}.`;
         } else {
             return "I don't have any allergies.";
         }

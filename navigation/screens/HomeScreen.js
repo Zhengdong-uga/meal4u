@@ -5,6 +5,47 @@ import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-nat
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 
+import { auth, firestore } from '../../backend/src/firebase';
+import { onAuthStateChanged } from 'firebase/auth'
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+
+const checkIfUserExists = async (uid, email, name) => {
+  const userDocRef = doc(firestore, 'Users', uid);  // Assuming your collection is 'users'
+  const userDoc = await getDoc(userDocRef);
+
+  if (userDoc.exists()) {
+    console.log('User exists:', userDoc.data());
+    // Proceed with the existing user data
+  } else {
+    console.log('No such user!');
+
+    const newUser = {
+      uid,
+      email,
+      name,
+      createdAt: new Date().toISOString(),  // Adding a creation date
+      age: 23,
+      weight: "150",
+      height: "180cm",
+      goal: 'gain muscle',
+      allergies: ['peanut', 'shellfish'],
+      diet: 'keto',
+      calorieRestriction: 1700,
+      dislikes: ['Chickpeas', 'Apples'],
+      // Add any other user-specific data you want to store
+    };
+
+    // Add new user to Firestore
+    await setDoc(userDocRef, newUser)
+      .then(() => {
+        console.log('New user added to Firestore:', newUser);
+      })
+      .catch((error) => {
+        console.error('Error adding new user to Firestore:', error);
+      });
+  }
+};
+
 const healthySections = [
   {
     title: "Healthy Tips",
@@ -77,6 +118,7 @@ const SectionHeader = ({ title }) => (
 
 export default function Component({ navigation }) {
   const [selectedTab, setSelectedTab] = useState('Today');
+  const [userFirstName, setUserFirstName] = useState('');  // State to store user's first name
 
   useEffect(() => {
     navigation.setOptions({
@@ -84,6 +126,24 @@ export default function Component({ navigation }) {
       headerTitle: '',
     });
   }, [navigation]);
+
+  // Listen to auth state changes and set the user's email when signed in
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log('User is signed in:', user); // Logs the user object
+        checkIfUserExists(user.uid, user.email, user.displayName);
+        setUserFirstName(user.displayName.split(' ')[0])
+      } else {
+        console.log('No user is signed in');
+        setUserFirstName('');  // Reset the email if no user is signed in
+
+      }
+    });
+
+    // Cleanup the listener on component unmount
+    return () => unsubscribe();
+  }, []);
 
   const getDateInfo = (tab) => {
     if (tab === 'Today') {
@@ -111,7 +171,7 @@ export default function Component({ navigation }) {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.headerTitle}>
-              Hello, Zhengdong
+              Hello, {userFirstName}
             </Text>
             <View style={styles.statusContainer}>
               <View style={styles.statusDot} />
@@ -120,27 +180,27 @@ export default function Component({ navigation }) {
               </Text>
             </View>
           </View>
-          
-          <Image 
-            source={require('../../assets/avatar.jpg')} 
+
+          <Image
+            source={require('../../assets/avatar.jpg')}
             style={styles.avatar}
           />
         </View>
 
         <View style={styles.tabContainer}>
-          <TouchableOpacity 
-            onPress={() => setSelectedTab('Today')} 
+          <TouchableOpacity
+            onPress={() => setSelectedTab('Today')}
             style={[styles.tab, selectedTab === 'Today' && styles.selectedTab]}
           >
             <Text style={[styles.tabText, selectedTab === 'Today' && styles.selectedTabText]}>Today</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={() => setSelectedTab('Tomorrow')} 
+          <TouchableOpacity
+            onPress={() => setSelectedTab('Tomorrow')}
             style={[styles.tab, selectedTab === 'Tomorrow' && styles.selectedTab]}
           >
             <Text style={[styles.tabText, selectedTab === 'Tomorrow' && styles.selectedTabText]}>Tomorrow</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={navigateToCalendar}
             style={[styles.tab, selectedTab === 'All' && styles.selectedTab]}
           >

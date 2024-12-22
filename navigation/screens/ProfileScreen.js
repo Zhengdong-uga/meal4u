@@ -3,13 +3,43 @@ import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, ScrollView, 
 import Icon from 'react-native-vector-icons/Ionicons';
 import { savedRecipes } from '../../data/savedRecipeData.js';
 
-import { getAuth, signOut } from 'firebase/auth';
-import firebaseApp from '../../backend/src/firebase'; // Adjust the path as necessary
+import { getAuth, signOut, onAuthStateChanged } from 'firebase/auth';
+import { auth, firestore } from '../../backend/src/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function ProfileScreen({ navigation }) {
     const [showAllRecipes, setShowAllRecipes] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
-    auth = getAuth(firebaseApp);
+    const [userEmail, setUserEmail] = useState(''); // Local state for storing user email
+    const [userFirstName, setUserFirstName] = useState(''); // Local state for storing user first name
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const userDocRef = doc(firestore, 'Users', user.uid);
+                try {
+                    const userDoc = await getDoc(userDocRef);
+                    if (userDoc.exists()) {
+                        console.log('User exists:', userDoc.data());
+                        setUserEmail(userDoc.data().email);
+                        setUserFirstName(userDoc.data().name.split(' ')[0]); // Split in case there's a full name
+                    } else {
+                        console.log('No such user!');
+                    }
+                } catch {
+                    console.error("Error fetching user info: ", error);
+                }
+                // Set user email to local state when signed in
+            } else {
+                // Reset email if the user is logged out
+                setUserEmail('');
+                setUserFirstName('');
+            }
+        });
+
+        // Cleanup on component unmount
+        return () => unsubscribe();
+    }, []);
 
     useEffect(() => {
         navigation.setOptions({
@@ -58,8 +88,8 @@ export default function ProfileScreen({ navigation }) {
                 <View style={styles.avatar}>
                     <Text style={styles.avatarText}>ZP</Text>
                 </View>
-                <Text style={styles.name}>Zhengdong Peng</Text>
-                <Text style={styles.email}>Asihfiix@gmail.com</Text>
+                <Text style={styles.name}> {userFirstName}</Text>
+                <Text style={styles.email}> {userEmail} </Text>
                 {/* <TouchableOpacity style={styles.editButton} onPress={() => setModalVisible(true)}> */}
                 <TouchableOpacity style={styles.editButton} onPress={() => setModalVisible(true)}>
                     <Text style={styles.editButtonText}>Edit Profile</Text>

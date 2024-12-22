@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import dayjs from 'dayjs'; // 用于获取当前日期
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, firestore } from '../../backend/src/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 import { ask_gemini } from '../../backend/api.js';
 
@@ -11,6 +14,53 @@ export default function AIScreen({ navigation }) {
     const [specialRequest, setSpecialRequest] = useState('');
     const [mealType, setMealType] = useState('');
     const [suggestionsNeeded, setSuggestionsNeeded] = useState(null);
+    const [userAllergies, setUserAllergies] = useState([]);
+    const [userDiet, setUserDiet] = useState('');
+    const [userCalorieRestriction, setUserCalorieRestriction] = useState(3000);
+    const [userGoal, setUserGoal] = useState('');
+    const [userDislikes, setUserDislikes] = useState([]);
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const userDocRef = doc(firestore, 'Users', user.uid);
+                try {
+                    const userDoc = await getDoc(userDocRef);
+                    if (userDoc.exists()) {
+                        console.log('User exists:', userDoc.data());
+                        setUserAllergies(userDoc.data().allergies);
+                        setUserDiet(userDoc.data().diet);
+                        setUserCalorieRestriction(userDoc.data().calorieRestriction);
+                        setUserGoal(userDoc.data().goal);
+                        setUserDislikes(userDoc.data().dislikes);
+                    } else {
+                        console.log('No such user!');
+                    }
+                } catch {
+                    console.error("Error fetching user info: ", error);
+                }
+                // Set user email to local state when signed in
+            } else {
+                // Reset email if the user is logged out
+                setUserAllergies([]);
+                setUserDiet('');
+                setUserCalorieRestriction('');
+                setUserGoal('');
+                setUserDislikes([]);
+            }
+        });
+
+        // Cleanup on component unmount
+        return () => unsubscribe();
+    }, []);
+
+    useEffect(() => {
+        console.log('userAllergies:', userAllergies);
+        console.log('userDiet:', userDiet);
+        console.log('userCalorieRestriction:', userCalorieRestriction);
+        console.log('userGoal:', userGoal);
+        console.log('userDislikes:', userDislikes);
+    }, [userAllergies, userDiet, userCalorieRestriction, userGoal, userDislikes]);
 
     // 添加食材
     const handleAddIngredient = () => {
@@ -84,14 +134,14 @@ export default function AIScreen({ navigation }) {
 
     // 生成菜谱并导航到生成页面 (fetch recipe from backend)
     const handleGenerateRecipe = async () => {
-        let allergies = { 'peanut': 0, 'shellfish': 1, 'strawberries': 1, 'tomatoes': 1, 'chocolate': 0 };
-        let diet = 'keto';
-        let calorieRestriction = 1700;
+        let allergies = userAllergies;
+        let diet = userDiet;
+        let calorieRestriction = userCalorieRestriction;
         let specialRequests = specialRequest;
         let time = '30 minutes';
-        let goal = 'gain muscle';
+        let goal = userGoal; // replace with database
         let dishType = mealType || 'Indian';
-        let dislikes = [];
+        let dislikes = userDislikes; // replace with database
 
         try {
             // Call the backend function to get a generated recipe
@@ -101,7 +151,6 @@ export default function AIScreen({ navigation }) {
             console.log(name);
             const generatedIngredients = parseIngredients(result);
             console.log(generatedIngredients);
-
 
             // ## Name: Keto Kung Pao Chicken Lettuce Wraps
 
