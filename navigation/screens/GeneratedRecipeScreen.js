@@ -2,13 +2,24 @@ import React, { useState } from 'react';
 import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
+
+
 export default function GeneratedRecipeScreen({ route, navigation }) {
     const { recipe } = route.params;
     const [activeTab, setActiveTab] = useState('details');
 
-    const handleSaveRecipe = () => {
-        navigation.navigate('SavedRecipes', { newRecipe: recipe });
+    const handleSaveRecipe = async () => {
+        console.log("Saving recipe:", recipe); // Check the recipe data
+        try {
+            await saveRecipeToFirebase(recipe);
+            console.log("Recipe saved successfully!");
+            navigation.navigate('SavedRecipes', { newRecipe: recipe });
+        } catch (error) {
+            console.error("Failed to save the recipe: ", error);
+            alert("An error occurred while saving the recipe. Please try again.");
+        }
     };
+    
 
     const handleAddToPlan = () => {
         navigation.navigate('Calendar', { newRecipe: recipe });
@@ -21,7 +32,9 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
             </TouchableOpacity>
 
             <View style={styles.recipeCard}>
-                <Text style={styles.recipeName}>{recipe.name || 'Generated Recipe'}</Text>
+                <Text style={styles.recipeName}>
+                    {recipe.name ? recipe.name : 'Generated Recipe'}
+                </Text>
                 <View style={styles.recipeInfo}>
                     <Text>{recipe.time || '30 mins'}</Text>
                     <Text>{recipe.difficulty || 'Medium'}</Text>

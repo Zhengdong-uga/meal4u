@@ -3,9 +3,43 @@ import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, ScrollView, 
 import Icon from 'react-native-vector-icons/Ionicons';
 import { savedRecipes } from '../../data/savedRecipeData.js';
 
+import { getAuth, signOut, onAuthStateChanged } from 'firebase/auth';
+import { auth, firestore } from '../../backend/src/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+
 export default function ProfileScreen({ navigation }) {
     const [showAllRecipes, setShowAllRecipes] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
+    const [userEmail, setUserEmail] = useState(''); // Local state for storing user email
+    const [userFirstName, setUserFirstName] = useState(''); // Local state for storing user first name
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const userDocRef = doc(firestore, 'Users', user.uid);
+                try {
+                    const userDoc = await getDoc(userDocRef);
+                    if (userDoc.exists()) {
+                        console.log('User exists:', userDoc.data());
+                        setUserEmail(userDoc.data().email);
+                        setUserFirstName(userDoc.data().name.split(' ')[0]); // Split in case there's a full name
+                    } else {
+                        console.log('No such user!');
+                    }
+                } catch {
+                    console.error("Error fetching user info: ", error);
+                }
+                // Set user email to local state when signed in
+            } else {
+                // Reset email if the user is logged out
+                setUserEmail('');
+                setUserFirstName('');
+            }
+        });
+
+        // Cleanup on component unmount
+        return () => unsubscribe();
+    }, []);
 
     useEffect(() => {
         navigation.setOptions({
@@ -32,6 +66,21 @@ export default function ProfileScreen({ navigation }) {
         </TouchableOpacity>
     );
 
+    // Logout function
+    const logout = () => {
+        signOut(auth)
+            .then(() => {
+                // Successfully logged out
+                Alert.alert('Logged out', 'You have been logged out successfully');
+                // Optionally, navigate to the login page or handle other state updates
+            })
+            .catch((error) => {
+                // Handle sign out error
+                console.error('Error signing out: ', error);
+                Alert.alert('Logout Error', error.message);
+            });
+    };
+
     return (
         <ScrollView style={styles.container}>
             {/* Profile Section */}
@@ -39,14 +88,15 @@ export default function ProfileScreen({ navigation }) {
                 <View style={styles.avatar}>
                     <Text style={styles.avatarText}>ZP</Text>
                 </View>
-                <Text style={styles.name}>Zhengdong Peng</Text>
-                <Text style={styles.email}>Asihfiix@gmail.com</Text>
+                <Text style={styles.name}> {userFirstName}</Text>
+                <Text style={styles.email}> {userEmail} </Text>
+                {/* <TouchableOpacity style={styles.editButton} onPress={() => setModalVisible(true)}> */}
                 <TouchableOpacity style={styles.editButton} onPress={() => setModalVisible(true)}>
                     <Text style={styles.editButtonText}>Edit Profile</Text>
                 </TouchableOpacity>
             </View>
 
-            {/* Achievements Section
+            {/* Achievements Section */}
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Achievements</Text>
                 <View style={styles.achievementsContainer}>
@@ -55,7 +105,7 @@ export default function ProfileScreen({ navigation }) {
                     <Achievement color="#90CAF9" value="50-60%" label="Food Waste Reduced" shapeStyle={styles.starAchievement} />
                     <Achievement color="#F48FB1" value="$800" label="Money Saved" shapeStyle={styles.squareAchievement} />
                 </View>
-            </View> */}
+            </View>
 
             {/* Saved Recipes Section */}
             <View style={styles.recipeSection}>
@@ -113,7 +163,7 @@ export default function ProfileScreen({ navigation }) {
                                 </TouchableOpacity>
                             ))}
                         </View>
-                        <TouchableOpacity style={styles.logoutButton} onPress={() => setModalVisible(false)}>
+                        <TouchableOpacity style={styles.logoutButton} onPress={logout}>
                             <Text style={styles.logoutButtonText}>Log out</Text>
                         </TouchableOpacity>
                     </ScrollView>
@@ -181,8 +231,8 @@ const styles = StyleSheet.create({
     },
     achievementsContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-around', 
-        flexWrap: 'nowrap', 
+        justifyContent: 'space-around',
+        flexWrap: 'nowrap',
         marginBottom: 10,
     },
     achievement: {
@@ -292,6 +342,6 @@ const styles = StyleSheet.create({
     },
     logoutButtonText: {
         color: 'black',
-        
+
     },
 });

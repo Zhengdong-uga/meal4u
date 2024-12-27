@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import dayjs from 'dayjs';
-
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, firestore } from '../../backend/src/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { ask_gemini } from '../../backend/api.js';
 
 export default function AIScreen({ navigation }) {
@@ -11,8 +13,17 @@ export default function AIScreen({ navigation }) {
     const [specialRequest, setSpecialRequest] = useState('');
     const [mealType, setMealType] = useState('');
     const [suggestionsNeeded, setSuggestionsNeeded] = useState(null);
-    const [preferencesModalVisible, setPreferencesModalVisible] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [preferencesModalVisible, setPreferencesModalVisible] = useState(false);
+
+    // User-specific data
+    const [userAllergies, setUserAllergies] = useState([]);
+    const [userDiet, setUserDiet] = useState('');
+    const [userCalorieRestriction, setUserCalorieRestriction] = useState(1700);
+    const [userGoal, setUserGoal] = useState('');
+    const [userDislikes, setUserDislikes] = useState([]);
+
+    // Preferences for recipe generation
     const [preferences, setPreferences] = useState({
         prepareTime: 'Under 30 mins',
         eatingGoal: 'Maintain',
@@ -31,11 +42,39 @@ export default function AIScreen({ navigation }) {
         dislikedFoods: ['Onion', 'Garlic', 'Peanuts', 'Shellfish'],
     };
 
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const userDocRef = doc(firestore, 'Users', user.uid);
+                try {
+                    const userDoc = await getDoc(userDocRef);
+                    if (userDoc.exists()) {
+                        const data = userDoc.data();
+                        setUserAllergies(data.allergies || []);
+                        setUserDiet(data.diet || '');
+                        setUserCalorieRestriction(data.calorieRestriction || 1700);
+                        setUserGoal(data.goal || '');
+                        setUserDislikes(data.dislikes || []);
+                    }
+                } catch (error) {
+                    console.error('Error fetching user info:', error);
+                }
+            } else {
+                // Reset user data if logged out
+                setUserAllergies([]);
+                setUserDiet('');
+                setUserCalorieRestriction(1700);
+                setUserGoal('');
+                setUserDislikes([]);
+            }
+        });
+
+        return () => unsubscribe();
+    }, []);
+
     const handleAddIngredient = () => {
-        if (ingredientInput.trim() !== '') {
-            const updatedIngredients = [...ingredients, ingredientInput.trim()];
-            setIngredients(updatedIngredients);
-            console.log("Updated ingredients:", updatedIngredients);
+        if (ingredientInput.trim()) {
+            setIngredients([...ingredients, ingredientInput.trim()]);
             setIngredientInput('');
         }
     };
@@ -64,61 +103,65 @@ export default function AIScreen({ navigation }) {
         });
     };
 
-    function extractRecipeName(recipe) {
-        // Find the position of the name marker "## Name:" and slice the string after it
-        const nameStart = recipe.indexOf("## Name:");
-        if (nameStart === -1) return null; // Return null if not found
+    const extractRecipeName = (recipe) => {
+        const nameStart = recipe.indexOf('Name:');
+        if (nameStart === -1) return 'Unnamed Recipe';
+        const nameEnd = recipe.indexOf('\n', nameStart);
+        return recipe.slice(nameStart + 5, nameEnd).trim();
+    };
 
-        // Slice from the start of the name until the next line break
-        const nameEnd = recipe.indexOf("\n", nameStart);
-        const recipeName = recipe.slice(nameStart + 8, nameEnd).trim(); // "+8" to skip "## Name: "
+    const parseIngredients = (recipe) => {
+        const ingredientsStart = recipe.indexOf('Ingredients:');
+        let stepsStart = recipe.indexOf('Steps of preparation:');
+        if (stepsStart === -1) {
+            stepsStart = recipe.indexOf('Steps of Preparation:');
+        }
 
-        return recipeName;
-    }
-    
-
-    function parseIngredients(recipe) {
-        const ingredientsStart = recipe.indexOf("**Ingredients:**");
-        const stepsStart = recipe.indexOf("**Steps of Preparation:**");
-        const ingredientsText = recipe.slice(ingredientsStart + 15, stepsStart).trim();
+        if (ingredientsStart === -1 || stepsStart === -1) return [];
+        const ingredientsText = recipe.slice(ingredientsStart + 12, stepsStart).trim();
         return ingredientsText
-            .split("\n")
-            .map(line => line.trim())
-            .filter(line => line.startsWith('*'))
-            .map(line => line.replace('*', '').trim())
-            .filter(line => line.length > 0);
-    }
+            .split('\n')
+            .map((line) => line.trim())
+            .filter((line) => line.startsWith('*'))
+            .map((line) => line.replace('*', '').trim());
+    };
 
     const handleGenerateRecipe = async () => {
-        let allergies = { peanut: 0, shellfish: 1, strawberries: 1, tomatoes: 1, chocolate: 0 };
-        let diet = preferences.dietType;
-        let calorieRestriction = 1700;
-        let time = preferences.prepareTime;
-        let goal = preferences.eatingGoal;
-        let dishType = mealType || preferences.dishType;
-        let dislikes = preferences.dislikedFoods.split(',');
-
         setLoading(true);
+        const { prepareTime, eatingGoal, dietType, dishType, dislikedFoods } = preferences;
+        const dislikes = dislikedFoods.split(',');
+        const allergies = userAllergies;
 
         try {
-            const result = await ask_gemini(allergies, diet, calorieRestriction, ingredients, specialRequest, time, goal, dishType, dislikes);
+            const result = await ask_gemini(
+                allergies,
+                dietType || userDiet,
+                userCalorieRestriction,
+                ingredients,
+                specialRequest,
+                prepareTime,
+                eatingGoal || userGoal,
+                dishType || mealType,
+                dislikes.concat(userDislikes)
+            );
+
             const name = extractRecipeName(result);
             const generatedIngredients = parseIngredients(result);
 
             const generatedRecipe = {
                 name: name,
-                description: 'description',
-                time: time,
+                description: 'Generated recipe based on your preferences.',
+                time: prepareTime,
                 difficulty: 'Medium',
                 ingredients: generatedIngredients,
-                instructions: ['Step 1: Prepare the ingredients.', 'Step 2: Follow the steps provided.'],
-                notes: ['The recipe was generated based on your input.'],
+                instructions: ['Step 1: Prepare the ingredients.', 'Step 2: Follow the instructions.'],
+                notes: ['Generated with AI based on your preferences.'],
             };
 
             navigation.navigate('GeneratedRecipe', { recipe: generatedRecipe });
         } catch (error) {
-            console.error("Error generating recipe:", error);
-            alert("Failed to generate recipe. Please try again.");
+            console.error('Error generating recipe:', error);
+            alert('Failed to generate recipe. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -126,7 +169,6 @@ export default function AIScreen({ navigation }) {
 
     const dayOfWeek = dayjs().format('dddd');
     const date = dayjs().format('MMMM D');
-    
 
     return (
         <View style={styles.container}>
@@ -144,14 +186,11 @@ export default function AIScreen({ navigation }) {
             </View>
 
             <View style={styles.inputSection}>
-                <Text style={styles.question}>
-
-                </Text>
+                <Text style={styles.question}>Which ingredients do you currently have?</Text>
                 <View style={styles.ingredientInputContainer}>
                     <TextInput
                         style={styles.ingredientInput}
                         placeholder="Add Ingredients"
-                        placeholderTextColor="#999"
                         value={ingredientInput}
                         onChangeText={setIngredientInput}
                         onSubmitEditing={handleAddIngredient}
@@ -176,16 +215,31 @@ export default function AIScreen({ navigation }) {
                         style={[styles.optionButton, suggestionsNeeded === true ? styles.selectedOption : null]}
                         onPress={() => setSuggestionsNeeded(true)}
                     >
-                        <Text style={[styles.optionText, suggestionsNeeded === true && styles.selectedOptionText]}>Yes</Text>
+                        <Text
+                            style={[
+                                styles.optionText,
+                                suggestionsNeeded === true && styles.selectedOptionText,
+                            ]}
+                        >
+                            Yes
+                        </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.optionButton, suggestionsNeeded === false ? styles.selectedOption : null]}
                         onPress={() => setSuggestionsNeeded(false)}
                     >
-                        <Text style={[styles.optionText, suggestionsNeeded === false && styles.selectedOptionText]}>No</Text>
+                        <Text
+                            style={[
+                                styles.optionText,
+                                suggestionsNeeded === false && styles.selectedOptionText,
+                            ]}
+                        >
+                            No
+                        </Text>
                     </TouchableOpacity>
                 </View>
             </View>
+
 
             <View style={styles.inputSection}>
                 <Text style={styles.question}>Special Request?</Text>
@@ -206,14 +260,22 @@ export default function AIScreen({ navigation }) {
                             style={[styles.optionButton, mealType === type ? styles.selectedOption : null]}
                             onPress={() => setMealType(type)}
                         >
-                            <Text style={[styles.optionText, mealType === type && styles.selectedOptionText]}>{type}</Text>
+                            <Text
+                                style={[
+                                    styles.optionText,
+                                    mealType === type && styles.selectedOptionText,
+                                ]}
+                            >
+                                {type}
+                            </Text>
                         </TouchableOpacity>
                     ))}
                 </View>
             </View>
 
-            <TouchableOpacity 
-                style={styles.generateButton} 
+
+            <TouchableOpacity
+                style={styles.generateButton}
                 onPress={handleGenerateRecipe}
                 disabled={loading}
             >
@@ -275,6 +337,9 @@ export default function AIScreen({ navigation }) {
         </View>
     );
 }
+
+
+
 
 const styles = StyleSheet.create({
     container: {

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, Modal, Button } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, StyleSheet, Modal, TextInput, Button } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
@@ -7,22 +7,25 @@ export default function CalendarScreen({ navigation, route }) {
   const [selectedDate, setSelectedDate] = useState(''); // Track the selected date
   const [mealsByDate, setMealsByDate] = useState({}); // Store meals for each date
   const [modalVisible, setModalVisible] = useState(false);
+  const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedRecipe, setSelectedRecipe] = useState(null); // Selected recipe for viewing details
+  const [editedRecipe, setEditedRecipe] = useState(null); // Recipe being edited
 
   // Handle new recipe or selected recipe being added
   useEffect(() => {
     if ((route.params?.newRecipe || route.params?.selectedRecipe) && selectedDate) {
-        const recipe = route.params.newRecipe || route.params.selectedRecipe;
+      const recipe = route.params.newRecipe || route.params.selectedRecipe;
 
-        setMealsByDate((prevMeals) => ({
-            ...prevMeals,
-            [selectedDate]: [...(prevMeals[selectedDate] || []), recipe.name || recipe.title], // Ensure proper field is used
-        }));
+      setMealsByDate((prevMeals) => ({
+        ...prevMeals,
+        [selectedDate]: [...(prevMeals[selectedDate] || []), recipe], // Store the full recipe object
+      }));
 
-        // Clear the navigation params to prevent re-adding
-        navigation.setParams({ newRecipe: null, selectedRecipe: null });
+      // Clear the navigation params to prevent re-adding
+      navigation.setParams({ newRecipe: null, selectedRecipe: null });
     }
   }, [route.params?.newRecipe, route.params?.selectedRecipe, selectedDate, navigation]);
-
 
   const handleAddMeal = (type) => {
     setModalVisible(false);
@@ -46,11 +49,6 @@ export default function CalendarScreen({ navigation, route }) {
     setSelectedDate(day.dateString); // Set the selected date
   }, []);
 
-  //  navigation.setOptions({
-  //       headerTransparent: true,
-  //       headerTitle: '',
-  //   });
-
   return (
     <View style={styles.container}>
       {/* Calendar */}
@@ -72,7 +70,37 @@ export default function CalendarScreen({ navigation, route }) {
           <FlatList
             data={mealsByDate[selectedDate]}
             keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item }) => <Text style={styles.mealItem}>{item}</Text>}
+            renderItem={({ item, index }) => (
+              <View style={styles.recipeRow}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedRecipe(item); // Pass the full recipe object
+                    setDetailsModalVisible(true);
+                  }}
+                >
+                  <Text style={styles.mealItem}>{item.name}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    setEditedRecipe(item); // Pass the recipe to edit
+                    setEditModalVisible(true);
+                  }}
+                >
+                  <Ionicons name="create" size={20} color="blue" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    setMealsByDate((prev) => {
+                      const updatedMeals = [...(prev[selectedDate] || [])];
+                      updatedMeals.splice(index, 1);
+                      return { ...prev, [selectedDate]: updatedMeals };
+                    });
+                  }}
+                >
+                  <Ionicons name="trash" size={20} color="red" />
+                </TouchableOpacity>
+              </View>
+            )}
           />
         ) : (
           <Text style={styles.noMealsText}>No Planning for this Date</Text>
@@ -84,7 +112,108 @@ export default function CalendarScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
 
-      {/* Modal for meal options */}
+      {/* Recipe Details Modal */}
+      <Modal
+        visible={detailsModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setDetailsModalVisible(false)}
+      >
+        <View style={styles.modalView}>
+          {selectedRecipe ? (
+            <>
+              <Text style={styles.modalText}>{selectedRecipe.name}</Text>
+              <Text>{selectedRecipe.description}</Text>
+              <Text>Ingredients:</Text>
+              {selectedRecipe.ingredients.map((ingredient, index) => (
+                <Text key={index}>- {ingredient}</Text>
+              ))}
+              <Text>Steps:</Text>
+              {selectedRecipe.instructions.map((step, index) => (
+                <Text key={index}>{index + 1}. {step}</Text>
+              ))}
+            </>
+          ) : (
+            <Text>No details available.</Text>
+          )}
+          <Button title="Close" onPress={() => setDetailsModalVisible(false)} />
+        </View>
+      </Modal>
+
+      {/* Recipe Edit Modal */}
+      <Modal
+        visible={editModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalView}>
+          <Text style={styles.modalText}>Edit Recipe</Text>
+
+          <Text>Notes:</Text>
+          <TextInput
+            style={styles.input}
+            value={editedRecipe?.notes?.[0] || ''}
+            onChangeText={(text) =>
+              setEditedRecipe((prev) => ({
+                ...prev,
+                notes: [text], // Update notes
+              }))
+            }
+          />
+
+          <Text>Ingredients:</Text>
+          <FlatList
+            data={editedRecipe?.ingredients || []}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({ item, index }) => (
+              <View style={styles.editRow}>
+                <TextInput
+                  style={styles.input}
+                  value={item}
+                  onChangeText={(text) => {
+                    const updatedIngredients = [...editedRecipe.ingredients];
+                    updatedIngredients[index] = text;
+                    setEditedRecipe((prev) => ({
+                      ...prev,
+                      ingredients: updatedIngredients,
+                    }));
+                  }}
+                />
+                <TouchableOpacity
+                  onPress={() => {
+                    const updatedIngredients = [...editedRecipe.ingredients];
+                    updatedIngredients.splice(index, 1);
+                    setEditedRecipe((prev) => ({
+                      ...prev,
+                      ingredients: updatedIngredients,
+                    }));
+                  }}
+                >
+                  <Ionicons name="trash" size={20} color="red" />
+                </TouchableOpacity>
+              </View>
+            )}
+          />
+
+          {/* Save Changes */}
+          <Button
+            title="Save Changes"
+            onPress={() => {
+              setMealsByDate((prev) => {
+                const updatedMeals = prev[selectedDate].map((meal) =>
+                  meal === editedRecipe ? editedRecipe : meal
+                );
+                return { ...prev, [selectedDate]: updatedMeals };
+              });
+              setEditModalVisible(false);
+            }}
+          />
+          <Button title="Cancel" color="red" onPress={() => setEditModalVisible(false)} />
+        </View>
+      </Modal>
+
+      {/* Modal for Adding Meals */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -120,12 +249,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
   },
-  mealItem: {
-    fontSize: 16,
+  recipeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 5,
     padding: 10,
     backgroundColor: '#ffe599',
-    marginBottom: 5,
     borderRadius: 5,
+  },
+  mealItem: {
+    fontSize: 16,
   },
   noMealsText: {
     fontSize: 16,
@@ -145,18 +279,30 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     padding: 35,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+    borderRadius: 10,
   },
   modalText: {
     marginBottom: 15,
     textAlign: 'center',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    marginBottom: 10,
+    width: '100%',
+  },
+  editRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 5,
   },
 });

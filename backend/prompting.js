@@ -3,13 +3,23 @@ function generatePrompt(allergies, diet, calorieRestriction, ingredients, specia
 
     // Handle allergies
     function allergiesPrompt(allergies) {
-        const allergiesList = Object.keys(allergies).filter(key => allergies[key] === 1);
-
-        if (allergiesList.length > 0) {
-            return `I have allergies to ${allergiesList.join(', ')}.`;
-        } else {
-            return "I don't have any allergies.";
+        if (Array.isArray(allergies)) {
+            // Handle if allergies is an array
+            if (allergies.length > 0) {
+                return `I have allergies to ${allergies.join(', ')}.`;
+            } else {
+                return "I don't have any allergies.";
+            }
+        } else if (typeof allergies === 'object') {
+            // Handle if allergies is an object
+            const allergiesList = Object.keys(allergies).filter(key => allergies[key] === 1);
+            if (allergiesList.length > 0) {
+                return `I have allergies to ${allergiesList.join(', ')}.`;
+            } else {
+                return "I don't have any allergies.";
+            }
         }
+        return "I don't have any allergies."; // Default fallback
     }
 
     // Handle diet
@@ -73,5 +83,3 @@ function generatePrompt(allergies, diet, calorieRestriction, ingredients, specia
 module.exports = {
     generatePrompt
 };
-
-// export { generatePrompt };

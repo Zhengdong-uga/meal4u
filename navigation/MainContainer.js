@@ -3,31 +3,49 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
+import { useState, useEffect } from 'react';
+import { onAuthStateChanged, getAuth } from 'firebase/auth';
+import firebaseApp from '../backend/src/firebase';
+
 // Screens
 import HomeScreen from './screens/HomeScreen';
 import CalendarScreen from './screens/CalendarScreen';
 import AIScreen from './screens/AIScreen';
 import ProfileScreen from './screens/ProfileScreen';
-import SavedRecipesScreen from './screens/SavedRecipesScreen'; // Import your new screen
-import GeneratedRecipeScreen from './screens/GeneratedRecipeScreen'; 
-
+import SavedRecipesScreen from './screens/SavedRecipesScreen';
+import GeneratedRecipeScreen from './screens/GeneratedRecipeScreen';
+import LoginPage from './screens/LoginPage';
 
 // Screen names
+const loginName = "Login";
 const homeName = "Home";
 const calendarName = "Calendar";
 const aiName = "AI";
 const profileName = "Profile";
-const savedRecipesName = "SavedRecipes";  // Declare the new screen name
+const savedRecipesName = "SavedRecipes";
 
 const Tab = createBottomTabNavigator();
 
 function MainContainer() {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(getAuth(firebaseApp), (user) => {
+      setUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (user === null) {
+    return <LoginPage />;
+  }
+
   return (
     <NavigationContainer>
       <Tab.Navigator
         initialRouteName={homeName}
         screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused, color, size }) => {
+          tabBarIcon: ({ focused, color, size = 24 }) => {
             let iconName;
             let rn = route.name;
 
@@ -41,7 +59,7 @@ function MainContainer() {
               iconName = focused ? 'person' : 'person-outline';
             }
 
-            return <Ionicons name={iconName} size={size} color={color} />;
+            return <Ionicons name={iconName} size={Number(size)} color={color} />;
           },
           tabBarActiveTintColor: 'black',
           tabBarInactiveTintColor: 'grey',
@@ -55,20 +73,16 @@ function MainContainer() {
         <Tab.Screen name={aiName} component={AIScreen} />
         <Tab.Screen name={profileName} component={ProfileScreen} />
         
-        {/* SavedRecipesScreen is not part of the bottom tab bar, so we hide it */}
         <Tab.Screen
           name={savedRecipesName}
           component={SavedRecipesScreen}
-          options={{ tabBarButton: () => null }}  // Hide from tab bar
+          options={{ tabBarButton: () => null }}
         />
-        {/* 隐藏生成页面 */}
         <Tab.Screen
-            name="GeneratedRecipe"
-            component={GeneratedRecipeScreen}
-            options={{ tabBarButton: () => null }}  // Hide from tab bar
+          name="GeneratedRecipe"
+          component={GeneratedRecipeScreen}
+          options={{ tabBarButton: () => null }}
         />
-
-
       </Tab.Navigator>
     </NavigationContainer>
   );
