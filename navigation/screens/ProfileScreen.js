@@ -29,15 +29,12 @@ export default function ProfileScreen({ navigation }) {
                 } catch {
                     console.error("Error fetching user info: ", error);
                 }
-                // Set user email to local state when signed in
             } else {
-                // Reset email if the user is logged out
                 setUserEmail('');
                 setUserFirstName('');
             }
         });
 
-        // Cleanup on component unmount
         return () => unsubscribe();
     }, []);
 
@@ -66,16 +63,12 @@ export default function ProfileScreen({ navigation }) {
         </TouchableOpacity>
     );
 
-    // Logout function
     const logout = () => {
         signOut(auth)
             .then(() => {
-                // Successfully logged out
                 Alert.alert('Logged out', 'You have been logged out successfully');
-                // Optionally, navigate to the login page or handle other state updates
             })
             .catch((error) => {
-                // Handle sign out error
                 console.error('Error signing out: ', error);
                 Alert.alert('Logout Error', error.message);
             });
@@ -83,20 +76,17 @@ export default function ProfileScreen({ navigation }) {
 
     return (
         <ScrollView style={styles.container}>
-            {/* Profile Section */}
             <View style={styles.profileSection}>
                 <View style={styles.avatar}>
                     <Text style={styles.avatarText}>ZP</Text>
                 </View>
-                <Text style={styles.name}> {userFirstName}</Text>
-                <Text style={styles.email}> {userEmail} </Text>
-                {/* <TouchableOpacity style={styles.editButton} onPress={() => setModalVisible(true)}> */}
+                <Text style={styles.name}>{userFirstName}</Text>
+                <Text style={styles.email}>{userEmail}</Text>
                 <TouchableOpacity style={styles.editButton} onPress={() => setModalVisible(true)}>
                     <Text style={styles.editButtonText}>Edit Profile</Text>
                 </TouchableOpacity>
             </View>
 
-            {/* Achievements Section */}
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Achievements</Text>
                 <View style={styles.achievementsContainer}>
@@ -107,7 +97,6 @@ export default function ProfileScreen({ navigation }) {
                 </View>
             </View>
 
-            {/* Saved Recipes Section */}
             <View style={styles.recipeSection}>
                 <Text style={styles.sectionTitle}>Recent Recipes</Text>
                 <FlatList
@@ -123,7 +112,6 @@ export default function ProfileScreen({ navigation }) {
                 </TouchableOpacity>
             </View>
 
-            {/* Settings Modal */}
             <Modal
                 animationType="slide"
                 transparent={true}
@@ -138,12 +126,22 @@ export default function ProfileScreen({ navigation }) {
                         </TouchableOpacity>
                     </View>
                     <ScrollView>
-                        {/* Unique content for each section */}
                         <View style={styles.modalSection}>
                             <Text style={styles.modalSectionTitle}>SETTINGS</Text>
-                            {['Account details', 'Payment cards', 'Notification', 'Eating preference'].map((item, idx) => (
-                                <TouchableOpacity key={idx} style={styles.modalItem}>
-                                    <Text>{item}</Text>
+                            {[
+                                { title: 'Account details', onPress: () => alert('Account details clicked') },
+                                { title: 'Payment cards', onPress: () => alert('Payment cards clicked') },
+                                { title: 'Notification', onPress: () => alert('Notification clicked') },
+                                {
+                                    title: 'Eating preference',
+                                    onPress: () => {
+                                        setModalVisible(false);
+                                        navigation.navigate('EatingPreference');
+                                    },
+                                },
+                            ].map((item, idx) => (
+                                <TouchableOpacity key={idx} style={styles.modalItem} onPress={item.onPress}>
+                                    <Text>{item.title}</Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
@@ -332,16 +330,15 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         borderWidth: 1,
         borderColor: 'black',
-        paddingVertical: 10, // Reduce vertical padding to make it shorter
-        paddingHorizontal: 30, // Add horizontal padding to control button width
+        paddingVertical: 10,
+        paddingHorizontal: 30,
         borderRadius: 20,
         alignItems: 'center',
-        alignSelf: 'center', // Centers the button horizontally
+        alignSelf: 'center',
         marginTop: 20,
-        marginBottom: 40, // Adds spacing below the button
+        marginBottom: 40,
     },
     logoutButtonText: {
         color: 'black',
-
     },
 });
