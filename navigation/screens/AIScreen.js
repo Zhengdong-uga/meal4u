@@ -133,28 +133,41 @@ export default function AIScreen({ navigation }) {
         const allergies = userAllergies;
 
         try {
-            const result = await ask_gemini(
-                allergies,
-                dietType || userDiet,
-                userCalorieRestriction,
-                ingredients,
-                specialRequest,
-                prepareTime,
-                eatingGoal || userGoal,
-                dishType || mealType,
-                dislikes.concat(userDislikes)
-            );
+            // const result = await ask_gemini(
+            //     allergies,
+            //     dietType || userDiet,
+            //     userCalorieRestriction,
+            //     ingredients,
+            //     specialRequest,
+            //     prepareTime,
+            //     eatingGoal || userGoal,
+            //     dishType || mealType,
+            //     dislikes.concat(userDislikes)
+            // );
 
-            const name = extractRecipeName(result);
-            const generatedIngredients = parseIngredients(result);
+            const goal = 'Maintain';
+            const dietType = 'Vegetarian';
+            const restrictions = ['milk', 'eggs', 'fish'];
+            const dislikes = ['onion', 'garlic'];
+            const likes = ['chicken', 'beef'];
+            const ingredients = ['chicken', 'beef', 'rice', 'tomatoes'];
+            const considerOthers = false;
+            const specialRequests = null;
+            const time = 'Under 30 mins';
+
+            const result = JSON.parse(await ask_gemini(
+                goal, dietType, restrictions, dislikes, likes, ingredients, considerOthers, specialRequests, time
+            ));
+            // const name = extractRecipeName(result);
+            // const generatedIngredients = parseIngredients(result);
 
             const generatedRecipe = {
-                name: name,
+                name: result.name,
                 description: 'Generated recipe based on your preferences.',
                 time: prepareTime,
                 difficulty: 'Medium',
-                ingredients: generatedIngredients,
-                instructions: ['Step 1: Prepare the ingredients.', 'Step 2: Follow the instructions.'],
+                ingredients: result.ingredients,
+                instructions: result.stepsOfPreparation,
                 notes: ['Generated with AI based on your preferences.'],
             };
 
