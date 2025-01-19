@@ -5,17 +5,20 @@ import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-nat
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 
-import { auth, firestore } from '../../backend/src/firebase';
+import { auth } from '../../backend/src/firebase';
 import { onAuthStateChanged } from 'firebase/auth'
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, getFirestore } from 'firebase/firestore';
 
 const checkIfUserExists = async (uid, email, name) => {
+  const firestore = getFirestore();
   const userDocRef = doc(firestore, 'Users', uid);  // Assuming your collection is 'users'
   const userDoc = await getDoc(userDocRef);
 
   if (userDoc.exists()) {
     console.log('User exists:', userDoc.data());
     // Proceed with the existing user data
+
+    return userDoc.data().name.split(' ')[0] // returns first name;
   } else {
     console.log('No such user!');
 
@@ -32,7 +35,8 @@ const checkIfUserExists = async (uid, email, name) => {
       likes: [],
       // height: 0, // Add height and weight potentially?
       // weight: 0, // o, and gender maybe?
-      // Add any other user-specific data you want to store
+      // Add any other user-specific data you want to store'
+      savedRecipes: [],
     };
 
     // Add new user to Firestore
@@ -43,6 +47,8 @@ const checkIfUserExists = async (uid, email, name) => {
       .catch((error) => {
         console.error('Error adding new user to Firestore:', error);
       });
+
+    return userDoc.data().name.split(' ')[0] // returns first name;
   }
 };
 
@@ -132,12 +138,11 @@ export default function Component({ navigation }) {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         console.log('User is signed in:', user); // Logs the user object
-        checkIfUserExists(user.uid, user.email, user.displayName);
-        setUserFirstName(user.displayName.split(' ')[0])
+        const firstName = checkIfUserExists(user.uid, user.email, user.displayName);
+        setUserFirstName(firstName)
       } else {
         console.log('No user is signed in');
         setUserFirstName('');  // Reset the email if no user is signed in
-
       }
     });
 

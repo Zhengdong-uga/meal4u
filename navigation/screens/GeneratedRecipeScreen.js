@@ -1,12 +1,42 @@
 import React, { useState } from 'react';
 import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-
-
+import { doc, getDoc, updateDoc, getFirestore } from 'firebase/firestore';
+import { auth } from '../../backend/src/firebase';
 
 export default function GeneratedRecipeScreen({ route, navigation }) {
     const { recipe } = route.params;
     const [activeTab, setActiveTab] = useState('details');
+
+    const saveRecipeToFirebase = async (recipe) => {
+        const user = auth.currentUser;
+
+        console.log(user)
+        console.log(recipe)
+        if (user) {
+            const firestore = getFirestore();
+            const userDocRef = doc(firestore, 'Users', user.uid);
+            try {
+                const userDoc = await getDoc(userDocRef);
+                console.log(userDoc.savedRecipes)
+                if (userDoc.exists()) {
+                    const recipeData = {
+                        name: recipe.name,
+                        time: recipe.time,
+                        difficulty: recipe.difficulty,
+                        ingredients: recipe.ingredients,
+                        instructions: recipe.instructions,
+                        description: recipe.description,
+                    };
+                    await updateDoc(userDocRef, {
+                        savedRecipes: [...userDoc.data().savedRecipes, recipeData],
+                    });
+                }
+            } catch (error) {
+                console.error('Error saving recipe:', error);
+            }
+        }
+    };
 
     const handleSaveRecipe = async () => {
         console.log("Saving recipe:", recipe); // Check the recipe data
