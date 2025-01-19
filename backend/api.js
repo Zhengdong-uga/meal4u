@@ -8,9 +8,9 @@
 const prompting = require('./prompting.js');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-const ask_gemini = async (goal, dietType, restrictions, dislikes, likes, ingredients, considerOthers, specialRequests, time) => {
+const ask_gemini = async (goal, diet, restrictions, dislikes, likes, ingredients, suggestions, specialrequest, mealtype, preparetime, dishtype) => {
 
-    let prompt = prompting.generatePrompt(goal, dietType, restrictions, dislikes, likes, ingredients, considerOthers, specialRequests, time);
+    let prompt = prompting.generatePrompt(goal, diet, restrictions, dislikes, likes, ingredients, suggestions, specialrequest, mealtype, preparetime, dishtype);
 
     const apiKey = 'AIzaSyBAa8I0mMNTTlxtPrTW5CQB-CwmDDBMX5E';
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -30,6 +30,9 @@ const ask_gemini = async (goal, dietType, restrictions, dislikes, likes, ingredi
             type: "object",
             properties: {
                 name: { type: "string" },
+                description: { type: "string" },
+                time: { type: "string" },
+                difficulty: { type: "string" },
                 ingredients: { type: "array", items: { type: "string" } },
                 stepsOfPreparation: { type: "array", items: { type: "string" } },
                 nutritionalInformation: { type: "string" },

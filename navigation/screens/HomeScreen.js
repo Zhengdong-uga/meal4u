@@ -9,7 +9,7 @@ import { auth, firestore } from '../../backend/src/firebase';
 import { onAuthStateChanged } from 'firebase/auth'
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
-const checkIfUserExists = async (uid, email, userFirstName) => {
+const checkIfUserExists = async (uid, email, name) => {
   const userDocRef = doc(firestore, 'Users', uid);  // Assuming your collection is 'users'
   const userDoc = await getDoc(userDocRef);
 
@@ -22,16 +22,16 @@ const checkIfUserExists = async (uid, email, userFirstName) => {
     const newUser = {
       uid,
       email,
-      userFirstName,
+      name,
+      // age: 0,
       createdAt: new Date().toISOString(),  // Adding a creation date
-      age: 23,
-      weight: "150",
-      height: "180cm",
-      goal: 'gain muscle',
-      allergies: ['peanut', 'shellfish'],
-      diet: 'keto',
-      calorieRestriction: 1700,
-      dislikes: ['Chickpeas', 'Apples'],
+      goal: [],
+      diet: [],
+      restrictions: [],
+      dislikes: [],
+      likes: [],
+      // height: 0, // Add height and weight potentially?
+      // weight: 0, // o, and gender maybe?
       // Add any other user-specific data you want to store
     };
 
@@ -169,15 +169,15 @@ export default function Component({ navigation }) {
         contentContainerStyle={styles.scrollViewContent}
       >
         <View style={styles.header}>
-        <View style={styles.headerLeft}>
-        <Text style={styles.headerTitle}>
-          Hello, {userFirstName || 'Loading...'}
-        </Text>
-        <View style={styles.statusContainer}>
-          <View style={styles.statusDot} />
-          <Text style={styles.statusText}>VIP Member</Text>
-        </View>
-      </View>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerTitle}>
+              Hello, {userFirstName || 'Loading...'}
+            </Text>
+            <View style={styles.statusContainer}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>VIP Member</Text>
+            </View>
+          </View>
 
 
           <Image

@@ -10,8 +10,8 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { auth, firestore } from '../../backend/src/firebase';
+import { doc, getDoc, updateDoc, getFirestore } from 'firebase/firestore';
+import { auth } from '../../backend/src/firebase';
 
 export default function EatingPreference({ navigation }) {
   const [preferences, setPreferences] = useState({
@@ -32,6 +32,7 @@ export default function EatingPreference({ navigation }) {
   const loadUserPreferences = async () => {
     const user = auth.currentUser;
     if (user) {
+      const firestore = getFirestore();
       const userDocRef = doc(firestore, 'Users', user.uid);
       try {
         const userDoc = await getDoc(userDocRef);
@@ -40,7 +41,7 @@ export default function EatingPreference({ navigation }) {
           setPreferences({
             eatingGoals: Array.isArray(userData.goal) ? userData.goal : [],
             dietTypes: Array.isArray(userData.diet) ? userData.diet : [],
-            restrictions: userData.allergies || [],
+            restrictions: userData.restrictions || [],
             dislikes: userData.dislikes || [],
             likes: userData.likes || [],
           });
@@ -54,16 +55,17 @@ export default function EatingPreference({ navigation }) {
   const handleUpdate = async () => {
     const user = auth.currentUser;
     if (user) {
+      const firestore = getFirestore();
       const userDocRef = doc(firestore, 'Users', user.uid);
       try {
         // Validate that `eatingGoals` and `dietTypes` are arrays of strings
         const sanitizedGoals = preferences.eatingGoals.filter((goal) => typeof goal === 'string');
         const sanitizedDietTypes = preferences.dietTypes.filter((type) => typeof type === 'string');
-  
+
         await updateDoc(userDocRef, {
           goal: sanitizedGoals,
           diet: sanitizedDietTypes,
-          allergies: preferences.restrictions,
+          restrictions: preferences.restrictions,
           dislikes: preferences.dislikes,
           likes: preferences.likes,
         });
@@ -73,7 +75,7 @@ export default function EatingPreference({ navigation }) {
       }
     }
   };
-  
+
 
   const PreferenceItemWithInput = ({ title, values, setValues }) => {
     const [input, setInput] = useState('');

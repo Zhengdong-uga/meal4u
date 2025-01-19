@@ -3,69 +3,64 @@ import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Modal, A
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import dayjs from 'dayjs';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth, firestore } from '../../backend/src/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { auth } from '../../backend/src/firebase';
+import { doc, getDoc, getFirestore } from 'firebase/firestore';
 import { ask_gemini } from '../../backend/api.js';
 
 export default function AIScreen({ navigation }) {
-    const [ingredients, setIngredients] = useState([]);
-    const [ingredientInput, setIngredientInput] = useState('');
-    const [specialRequest, setSpecialRequest] = useState('');
-    const [mealType, setMealType] = useState('');
-    const [suggestionsNeeded, setSuggestionsNeeded] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [preferencesModalVisible, setPreferencesModalVisible] = useState(false);
+    const [ingredientInput, setIngredientInput] = useState(''); // ?
+    const [loading, setLoading] = useState(false); // ?
+    const [preferencesModalVisible, setPreferencesModalVisible] = useState(false); // ?
 
-    // User-specific data
-    const [userAllergies, setUserAllergies] = useState([]);
-    const [userDiet, setUserDiet] = useState('');
-    const [userCalorieRestriction, setUserCalorieRestriction] = useState(1700);
-    const [userGoal, setUserGoal] = useState('');
-    const [userDislikes, setUserDislikes] = useState([]);
+    // Obtained from database
+    const [userGoal, setUserGoal] = useState(''); // User's goals (lose weight, gain muscle, etc.)
+    const [userDiet, setUserDiet] = useState(''); // User's diet (keto, vegan, etc.)
+    const [userRestrictions, setUserRestrictions] = useState([]); // What the user cannot eat (allergies, etc.)
+    const [userDislikes, setUserDislikes] = useState([]); // What the user dislikes
+    const [userLikes, setUserLikes] = useState([]); // What the user likes
 
-    // Preferences for recipe generation
+    // Obtained from AI page
+    const [ingredients, setIngredients] = useState([]); // What the user has right now
+    const [suggestionsNeeded, setSuggestionsNeeded] = useState(null); // Should LLM consider other ingredients?
+    const [specialRequest, setSpecialRequest] = useState(''); // What special requests does the user need?
+    const [mealType, setMealType] = useState(''); // Time of the meal - breakfast, lunch, dinner
+
+    // Obtained from the popup on the AI page
     const [preferences, setPreferences] = useState({
-        prepareTime: 'Under 30 mins',
-        eatingGoal: 'Maintain',
-        dietType: '',
-        foodRestrictions: '',
+        prepareTime: '',
         dishType: '',
-        dislikedFoods: '',
     });
 
     const options = {
         prepareTime: ['Under 15 mins', 'Under 30 mins', '1 hour'],
-        eatingGoal: ['Lose fat', 'Gain weight', 'Maintain'],
-        dietType: ['Vegetarian', 'Vegan', 'Keto', 'Paleo'],
-        foodRestrictions: ['Gluten-Free', 'Dairy-Free', 'Nut-Free'],
         dishType: ['Asian', 'American', 'Mediterranean', 'Indian'],
-        dislikedFoods: ['Onion', 'Garlic', 'Peanuts', 'Shellfish'],
     };
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
+                const firestore = getFirestore();
                 const userDocRef = doc(firestore, 'Users', user.uid);
                 try {
                     const userDoc = await getDoc(userDocRef);
                     if (userDoc.exists()) {
                         const data = userDoc.data();
-                        setUserAllergies(data.allergies || []);
-                        setUserDiet(data.diet || '');
-                        setUserCalorieRestriction(data.calorieRestriction || 1700);
                         setUserGoal(data.goal || '');
+                        setUserDiet(data.diet || '');
+                        setUserRestrictions(data.restrictions || []);
                         setUserDislikes(data.dislikes || []);
+                        setUserLikes(data.likes || []);
                     }
                 } catch (error) {
                     console.error('Error fetching user info:', error);
                 }
             } else {
                 // Reset user data if logged out
-                setUserAllergies([]);
-                setUserDiet('');
-                setUserCalorieRestriction(1700);
                 setUserGoal('');
+                setUserDiet('');
+                setUserRestrictions([]);
                 setUserDislikes([]);
+                setUserLikes([]);
             }
         });
 
@@ -95,80 +90,29 @@ export default function AIScreen({ navigation }) {
     const clearPreferences = () => {
         setPreferences({
             prepareTime: '',
-            eatingGoal: '',
-            dietType: '',
-            foodRestrictions: '',
             dishType: '',
-            dislikedFoods: '',
         });
-    };
-
-    const extractRecipeName = (recipe) => {
-        const nameStart = recipe.indexOf('Name:');
-        if (nameStart === -1) return 'Unnamed Recipe';
-        const nameEnd = recipe.indexOf('\n', nameStart);
-        return recipe.slice(nameStart + 5, nameEnd).trim();
-    };
-
-    const parseIngredients = (recipe) => {
-        const ingredientsStart = recipe.indexOf('Ingredients:');
-        let stepsStart = recipe.indexOf('Steps of preparation:');
-        if (stepsStart === -1) {
-            stepsStart = recipe.indexOf('Steps of Preparation:');
-        }
-
-        if (ingredientsStart === -1 || stepsStart === -1) return [];
-        const ingredientsText = recipe.slice(ingredientsStart + 12, stepsStart).trim();
-        return ingredientsText
-            .split('\n')
-            .map((line) => line.trim())
-            .filter((line) => line.startsWith('*'))
-            .map((line) => line.replace('*', '').trim());
     };
 
     const handleGenerateRecipe = async () => {
         setLoading(true);
-        const { prepareTime, eatingGoal, dietType, dishType, dislikedFoods } = preferences;
-        const dislikes = dislikedFoods.split(',');
-        const allergies = userAllergies;
+        const { prepareTime, dishType } = preferences;
 
         try {
-            // const result = await ask_gemini(
-            //     allergies,
-            //     dietType || userDiet,
-            //     userCalorieRestriction,
-            //     ingredients,
-            //     specialRequest,
-            //     prepareTime,
-            //     eatingGoal || userGoal,
-            //     dishType || mealType,
-            //     dislikes.concat(userDislikes)
-            // );
-
-            const goal = 'Maintain';
-            const dietType = 'Vegetarian';
-            const restrictions = ['milk', 'eggs', 'fish'];
-            const dislikes = ['onion', 'garlic'];
-            const likes = ['chicken', 'beef'];
-            const ingredients = ['chicken', 'beef', 'rice', 'tomatoes'];
-            const considerOthers = false;
-            const specialRequests = null;
-            const time = 'Under 30 mins';
 
             const result = JSON.parse(await ask_gemini(
-                goal, dietType, restrictions, dislikes, likes, ingredients, considerOthers, specialRequests, time
-            ));
-            // const name = extractRecipeName(result);
-            // const generatedIngredients = parseIngredients(result);
+                userGoal, userDiet, userRestrictions, userDislikes, userLikes, ingredients, suggestionsNeeded, specialRequest, mealType, prepareTime, dishType)
+            );
+
 
             const generatedRecipe = {
                 name: result.name,
-                description: 'Generated recipe based on your preferences.',
-                time: prepareTime,
-                difficulty: 'Medium',
+                description: result.description,
+                time: result.time,
+                difficulty: result.difficulty,
                 ingredients: result.ingredients,
                 instructions: result.stepsOfPreparation,
-                notes: ['Generated with AI based on your preferences.'],
+                notes: ['Generated with AI based on your preferences.'], // should I replace this with nutritional information?
             };
 
             navigation.navigate('GeneratedRecipe', { recipe: generatedRecipe });
@@ -350,9 +294,6 @@ export default function AIScreen({ navigation }) {
         </View>
     );
 }
-
-
-
 
 const styles = StyleSheet.create({
     container: {

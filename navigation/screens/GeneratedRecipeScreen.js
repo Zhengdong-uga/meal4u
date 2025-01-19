@@ -19,7 +19,7 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
             alert("An error occurred while saving the recipe. Please try again.");
         }
     };
-    
+
 
     const handleAddToPlan = () => {
         navigation.navigate('Calendar', { newRecipe: recipe });
