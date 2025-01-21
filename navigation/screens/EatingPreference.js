@@ -24,6 +24,9 @@ export default function EatingPreference({ navigation }) {
 
   const [isEatingGoalsModalVisible, setEatingGoalsModalVisible] = useState(false);
   const [isDietTypesModalVisible, setDietTypesModalVisible] = useState(false);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+
+  
 
   useEffect(() => {
     loadUserPreferences();
@@ -58,10 +61,9 @@ export default function EatingPreference({ navigation }) {
       const firestore = getFirestore();
       const userDocRef = doc(firestore, 'Users', user.uid);
       try {
-        // Validate that `eatingGoals` and `dietTypes` are arrays of strings
         const sanitizedGoals = preferences.eatingGoals.filter((goal) => typeof goal === 'string');
         const sanitizedDietTypes = preferences.dietTypes.filter((type) => typeof type === 'string');
-
+  
         await updateDoc(userDocRef, {
           goal: sanitizedGoals,
           diet: sanitizedDietTypes,
@@ -69,12 +71,21 @@ export default function EatingPreference({ navigation }) {
           dislikes: preferences.dislikes,
           likes: preferences.likes,
         });
-        navigation.navigate('Profile');
+  
+        // Show success notification
+        setSuccessModalVisible(true);
+  
+        // Navigate to Profile after a delay
+        setTimeout(() => {
+          setSuccessModalVisible(false);
+          navigation.navigate('Profile');
+        }, 2000);
       } catch (error) {
         console.error('Error updating preferences:', error);
       }
     }
   };
+  
 
 
   const PreferenceItemWithInput = ({ title, values, setValues }) => {
@@ -253,6 +264,21 @@ export default function EatingPreference({ navigation }) {
         </TouchableOpacity>
       </ScrollView>
 
+      {/* successful notification */}
+      <Modal
+        visible={successModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSuccessModalVisible(false)}
+      >
+        <View style={styles.successModalOverlay}>
+          <View style={styles.successModalContainer}>
+            <Ionicons name="checkmark-circle" size={60} color="#48755C" />
+            <Text style={styles.successModalText}>Preferences Updated Successfully!</Text>
+          </View>
+        </View>
+      </Modal>
+
       <MultiSelectPicker
         visible={isEatingGoalsModalVisible}
         selectedItems={preferences.eatingGoals}
@@ -294,11 +320,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sectionWrapper: {
-    marginBottom: 20,
+    marginBottom: 15,
     paddingHorizontal: 20,
   },
   preferenceInputContainer: {
-    marginBottom: 20,
+    marginBottom: 10,
     paddingHorizontal: 20,
   },
   preferenceItem: {
@@ -317,6 +343,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 4,
+    color: '#664E2D',
   },
   preferenceValue: {
     fontSize: 14,
@@ -337,13 +364,13 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   addButton: {
-    backgroundColor: '#000',
+    backgroundColor: '#B8CCBA',
     paddingHorizontal: 15,
     paddingVertical: 10,
     borderRadius: 10,
   },
   addButtonText: {
-    color: '#fff',
+    color: '#48755C',
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -360,7 +387,7 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   updateButton: {
-    backgroundColor: '#000',
+    backgroundColor: '#48755C',
     margin: 30,
     padding: 16,
     borderRadius: 25,
@@ -411,4 +438,23 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#007AFF',
   },
+  successModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  successModalContainer: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  successModalText: {
+    marginTop: 10,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#48755C',
+  },
+  
 });

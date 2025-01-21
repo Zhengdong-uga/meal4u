@@ -12,7 +12,7 @@ const ask_gemini = async (goal, diet, restrictions, dislikes, likes, ingredients
 
     let prompt = prompting.generatePrompt(goal, diet, restrictions, dislikes, likes, ingredients, suggestions, specialrequest, mealtype, preparetime, dishtype);
 
-    const apiKey = 'AIzaSyBAa8I0mMNTTlxtPrTW5CQB-CwmDDBMX5E';
+    // const apiKey = 'discord';
     const genAI = new GoogleGenerativeAI(apiKey);
 
     const model = genAI.getGenerativeModel({

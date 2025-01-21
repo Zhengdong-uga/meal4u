@@ -138,7 +138,7 @@ export default function AIScreen({ navigation }) {
                     style={styles.preferenceButton}
                     onPress={() => setPreferencesModalVisible(true)}
                 >
-                    <Ionicons name="options-outline" size={30} color="black" />
+                    <Ionicons name="options-outline" size={30} color="#48755C" />
                 </TouchableOpacity>
             </View>
 
@@ -211,7 +211,7 @@ export default function AIScreen({ navigation }) {
             <View style={styles.inputSection}>
                 <Text style={styles.question}>Which meal is this for?</Text>
                 <View style={styles.optionContainer}>
-                    {['Breakfast', 'Lunch', 'Dinner'].map((type) => (
+                    {['Meals', 'Drinks', 'Dessert'].map((type) => (
                         <TouchableOpacity
                             key={type}
                             style={[styles.optionButton, mealType === type ? styles.selectedOption : null]}
@@ -299,24 +299,27 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         padding: 20,
-        backgroundColor: '#fff',
+        backgroundColor: '#FEF8F5',
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 20,
+
     },
     dateContainer: {
         justifyContent: 'center',
+
     },
     dayText: {
         fontSize: 24,
         fontWeight: 'bold',
+        
     },
     dateText: {
         fontSize: 18,
-        color: '#888',
+        color: 'grey',
         marginTop: 5,
     },
     preferenceButton: {
@@ -328,20 +331,21 @@ const styles = StyleSheet.create({
     question: {
         fontSize: 16,
         marginBottom: 10,
+        color: '#664E2D',
     },
     ingredientInputContainer: {
         flexDirection: 'column',
         alignItems: 'center',
-        borderColor: '#ccc',
+        borderColor: '#48755C',
         borderWidth: 1,
         borderRadius: 10,
         padding: 10,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: '#',
     },
     ingredient: {
-        padding: 5,
-        backgroundColor: '#ddd',
-        borderRadius: 15,
+        padding: 10,
+        backgroundColor: '#DCEFDF',
+        borderRadius: 20,
         marginRight: 10,
         marginBottom: 10,
     },
@@ -357,7 +361,7 @@ const styles = StyleSheet.create({
     optionButton: {
         flex: 1,
         padding: 15,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: 'white',
         marginHorizontal: 5,
         borderRadius: 10,
         alignItems: 'center',
@@ -375,22 +379,29 @@ const styles = StyleSheet.create({
         color: 'white',
     },
     specialRequestInput: {
+        borderColor: '#48755C',
         borderWidth: 1,
-        borderColor: '#ccc',
         borderRadius: 10,
         padding: 10,
-        backgroundColor: '#f0f0f0',
         height: 50,
         fontSize: 16,
     },
     generateButton: {
-        backgroundColor: 'black',
+        backgroundColor: '#48755C',
         padding: 15,
         borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: 20,
         height: 50, // Fixed height to prevent button size change
+        shadowColor: '#000', // Shadow color
+        shadowOffset: {
+          width: 4, // Horizontal offset
+          height: 4, // Vertical offset
+        },
+        shadowOpacity: 0.25, // Shadow transparency
+        shadowRadius: 4, // Blur radius
+        elevation: 2, // Android shadow
     },
     generateButtonText: {
         color: 'white',
@@ -424,21 +435,21 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     option: {
-        borderWidth: 1,
-        borderColor: '#ccc',
+        borderWidth: 2,
+        borderColor: '#F5EAE1',
         borderRadius: 20,
         padding: 10,
         margin: 5,
     },
     selectedOption: {
-        backgroundColor: 'black',
-        borderColor: 'black',
+        backgroundColor: '#DCEFDF',
+        borderColor: '#48755C',
     },
     optionText: {
         color: 'black',
     },
     selectedOptionText: {
-        color: 'white',
+        color: '#49351C',
     },
     buttonsContainer: {
         flexDirection: 'row',
@@ -446,16 +457,16 @@ const styles = StyleSheet.create({
         marginTop: 20,
     },
     clearButton: {
-        backgroundColor: '#ddd',
+        backgroundColor: 'white',
         padding: 10,
         borderRadius: 10,
     },
     clearButtonText: {
-        color: '#000',
+        color: 'red',
         fontWeight: 'bold',
     },
     applyButton: {
-        backgroundColor: 'black',
+        backgroundColor: '#48755C',
         padding: 10,
         borderRadius: 10,
     },

@@ -2,20 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity, Linking, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
-import { Ionicons } from '@expo/vector-icons';
+
 import dayjs from 'dayjs';
 
-import { auth, firestore } from '../../backend/src/firebase';
+import { auth} from '../../backend/src/firebase';
 import { onAuthStateChanged } from 'firebase/auth'
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, getFirestore } from 'firebase/firestore';
+
 
 const checkIfUserExists = async (uid, email, name) => {
+  const firestore = getFirestore();
   const userDocRef = doc(firestore, 'Users', uid);  // Assuming your collection is 'users'
   const userDoc = await getDoc(userDocRef);
 
   if (userDoc.exists()) {
     console.log('User exists:', userDoc.data());
     // Proceed with the existing user data
+    return userDoc.data().name.split(' ')[0] // returns first name;
   } else {
     console.log('No such user!');
 
@@ -30,9 +33,7 @@ const checkIfUserExists = async (uid, email, name) => {
       restrictions: [],
       dislikes: [],
       likes: [],
-      // height: 0, // Add height and weight potentially?
-      // weight: 0, // o, and gender maybe?
-      // Add any other user-specific data you want to store
+      savedRecipes: [],
     };
 
     // Add new user to Firestore
@@ -43,6 +44,21 @@ const checkIfUserExists = async (uid, email, name) => {
       .catch((error) => {
         console.error('Error adding new user to Firestore:', error);
       });
+    return userDoc.data().name.split(' ')[0] // returns first name;
+  }
+};
+
+const getMealType = (hour) => {
+  if (hour >= 6 && hour < 10) {
+    return "Breakfast";
+  } else if (hour >= 10 && hour < 15) {
+    return "Lunch";
+  } else if (hour >= 15 && hour < 17) {
+    return "Snack";
+  } else if (hour >= 17 && hour < 21) {
+    return "Dinner";
+  } else {
+    return "Not Recommended to Eat";
   }
 };
 
@@ -53,7 +69,7 @@ const healthySections = [
       { title: "Best Core Exercises", link: "https://www.healthline.com/health/best-core-exercises", image: require('../../assets/healthline.png') },
       { title: "Brain Health Tips", link: "https://www.mayoclinic.org/healthy-lifestyle/healthy-aging/in-depth/brain-health-tips/art-20555198", image: require('../../assets/bowl-peanuts.webp') },
       { title: "Health Checklist for Women Over 40", link: "https://www.webmd.com/women/health-checklist-for-women-over-40", image: require('../../assets/webmd.jpg') },
-      { title: "Hormone Balancing Meal Plan", link: "https://www.verywellfit.com/hormone-balancing-meal-plan-8304151", image: require('../../assets/verywell.png') },
+      { title: "Hormone Balancing", link: "https://www.verywellfit.com/hormone-balancing-meal-plan-8304151", image: require('../../assets/verywell.png') },
       { title: "Best Cold Plunge Tubs", link: "https://www.mindbodygreen.com/articles/best-cold-plunge-tubs", image: require('../../assets/mbg.webp') },
       { title: "Are Peanuts Good for You?", link: "https://www.eatthis.com/are-peanuts-good-for-you/", image: require('../../assets/bowl-peanuts.webp') },
     ]
@@ -94,18 +110,17 @@ const healthySections = [
 ];
 
 const PodcastCard = ({ title, link }) => (
-  <TouchableOpacity onPress={() => Linking.openURL(link)} style={styles.podcastCard}>
-    <Image source={{ uri: `https://picsum.photos/seed/${title}/300/200` }} style={styles.podcastImage} />
+  <TouchableOpacity onPress={() => Linking.openURL(link)} style={[styles.podcastCard, styles.cardBackground]}>
     <Text style={styles.podcastTitle} numberOfLines={2}>{title}</Text>
   </TouchableOpacity>
 );
 
 const ContentCard = ({ title, link }) => (
-  <TouchableOpacity onPress={() => Linking.openURL(link)} style={styles.contentCard}>
-    <Image source={{ uri: `https://picsum.photos/seed/${title}/300/200` }} style={styles.contentImage} />
+  <TouchableOpacity onPress={() => Linking.openURL(link)} style={[styles.contentCard, styles.cardBackground]}>
     <Text style={styles.contentTitle} numberOfLines={2}>{title}</Text>
   </TouchableOpacity>
 );
+
 
 const SectionHeader = ({ title }) => (
   <View style={styles.sectionHeader}>
@@ -119,6 +134,8 @@ const SectionHeader = ({ title }) => (
 export default function Component({ navigation }) {
   const [selectedTab, setSelectedTab] = useState('Today');
   const [userFirstName, setUserFirstName] = useState('');  // State to store user's first name
+  const [mealType, setMealType] = useState('');
+  const [mealTime, setMealTime] = useState('');
 
   useEffect(() => {
     navigation.setOptions({
@@ -132,17 +149,27 @@ export default function Component({ navigation }) {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         console.log('User is signed in:', user); // Logs the user object
-        checkIfUserExists(user.uid, user.email, user.displayName);
-        setUserFirstName(user.displayName.split(' ')[0])
+        const firstName = checkIfUserExists(user.uid, user.email, user.displayName);
+        setUserFirstName(firstName)
       } else {
         console.log('No user is signed in');
         setUserFirstName('');  // Reset the email if no user is signed in
-
       }
     });
 
     // Cleanup the listener on component unmount
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const now = new Date();
+    const hour = now.getHours();
+
+    setMealType(getMealType(hour));
+
+    // Format the current time (e.g., 8:00 AM)
+    const formattedTime = dayjs(now).format('h:mm A');
+    setMealTime(formattedTime);
   }, []);
 
   const getDateInfo = (tab) => {
@@ -168,6 +195,7 @@ export default function Component({ navigation }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollViewContent}
       >
+        {/* Header Section */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.headerTitle}>
@@ -178,61 +206,31 @@ export default function Component({ navigation }) {
               <Text style={styles.statusText}>VIP Member</Text>
             </View>
           </View>
-
-
           <Image
-            source={require('../../assets/avatar.jpg')}
+            source={require('../../assets/avatar.png')}
             style={styles.avatar}
           />
         </View>
 
-        <View style={styles.tabContainer}>
+        {/* Date and Meal Info Section */}
+        <View style={styles.dateMealContainer}>
+          <View style={styles.dateTimeContainer}>
+            <Text style={styles.dateText}>{dateInfo.format('dddd, MMMM D')}</Text>
+            <Text style={styles.timeText}>
+              {mealTime} - {mealType}
+            </Text>
+          </View>
           <TouchableOpacity
-            onPress={() => setSelectedTab('Today')}
-            style={[styles.tab, selectedTab === 'Today' && styles.selectedTab]}
+            style={styles.startPlanningButton}
+            onPress={() => navigation.navigate('Calendar')}
           >
-            <Text style={[styles.tabText, selectedTab === 'Today' && styles.selectedTabText]}>Today</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setSelectedTab('Tomorrow')}
-            style={[styles.tab, selectedTab === 'Tomorrow' && styles.selectedTab]}
-          >
-            <Text style={[styles.tabText, selectedTab === 'Tomorrow' && styles.selectedTabText]}>Tomorrow</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={navigateToCalendar}
-            style={[styles.tab, selectedTab === 'All' && styles.selectedTab]}
-          >
-            <Ionicons name="calendar-outline" size={16} color={selectedTab === 'All' ? '#fff' : '#000'} />
+            <Text style={styles.startPlanningText}>Start Planning</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.mealPlanDashboard}>
-          <Text style={styles.dashboardTitle}>
-            {selectedTab === 'All' ? 'All Meal Plans' : dateInfo.format('dddd')}
-          </Text>
-
-          {selectedTab === 'All' ? (
-            <Text>Redirecting to calendar...</Text>
-          ) : (
-            <View style={styles.dateInfoContainer}>
-              <View>
-                <Text style={styles.dateNumber}>{dateInfo.format('D')}</Text>
-                <Text style={styles.dateMonth}>{dateInfo.format('MMMM')}</Text>
-              </View>
-
-              <View style={styles.dateDivider} />
-
-              <View style={styles.mealTimeContainer}>
-                <Text style={styles.mealTime}>8:00 AM</Text>
-                <Text style={styles.mealType}>Breakfast</Text>
-              </View>
-            </View>
-          )}
-        </View>
-
+  
+        {/* Healthy Tips Section */}
         <Text style={styles.healthyTipsHeader}>Check Out More Pro Healthy Content!</Text>
-
         {healthySections.map((section, index) => (
           <View key={index}>
             <View style={styles.healthySection}>
@@ -253,12 +251,13 @@ export default function Component({ navigation }) {
       </ScrollView>
     </View>
   );
-}
+}  
+  
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#FEF8F5',
   },
   scrollViewContent: {
     paddingBottom: 50,
@@ -293,12 +292,12 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 14,
-    color: '#888',
+    color: '#664E2D',
   },
   avatar: {
-    height: hp(5.5),
-    width: hp(5.5),
-    borderRadius: hp(3),
+    height: 50,
+    width: 50,
+    borderRadius: 25,
   },
   tabContainer: {
     flexDirection: 'row',
@@ -317,10 +316,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
   },
   tabText: {
-    color: '#000',
+    color: '#664E2D',
   },
   selectedTabText: {
-    color: '#fff',
+    color: '#664E2D',
   },
   mealPlanDashboard: {
     paddingHorizontal: 16,
@@ -359,20 +358,35 @@ const styles = StyleSheet.create({
   mealType: {
     color: '#888',
   },
+  startPlanningButton: {
+  backgroundColor: '#48755C', // Adjust to match design
+  paddingVertical: 12,
+  paddingHorizontal: 12,
+  borderRadius: 20,
+  },
+  startPlanningText: {
+  color: '#fff',
+  fontSize: 14,
+  fontWeight: 'bold',
+  textAlign: 'center',
+  },
   healthyTipsHeader: {
-    fontSize: 30,
+    fontSize: 20,
     fontWeight: 'bold',
     marginLeft: 16,
     marginTop: 30,
     marginBottom: 10,
+    color: '#231F20',
   },
   healthySection: {
     marginTop: 20,
     marginBottom: 20,
+    color: '#664E2D',
   },
   healthySectionContent: {
     paddingLeft: 16,
     paddingRight: 16,
+    color: '#664E2D',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -386,12 +400,29 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   seeAllButton: {
-    color: '#007AFF',
+    color: 'grey',
     fontSize: 16,
+  },
+  cardBackground: {
+    backgroundColor: '#B8CCBA', // Card background color
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
+    shadowColor: '#000', // Shadow color
+    shadowOffset: {
+      width: 2, // Horizontal offset
+      height: 0, // Vertical offset
+    },
+    shadowOpacity: 0.25, // Shadow transparency
+    shadowRadius: 2, // Blur radius
+    elevation: 2, // Android shadow
   },
   podcastCard: {
     width: wp(70),
     marginRight: 15,
+    marginBottom: 15,
+    height: hp(18),
+
   },
   podcastImage: {
     width: wp(70),
@@ -402,10 +433,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginTop: 5,
+    color: '#664E2D',
   },
   contentCard: {
     width: wp(40),
     marginRight: 15,
+    height: wp(40),
+    marginBottom: 15,
   },
   contentImage: {
     width: wp(40),
@@ -413,13 +447,36 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   contentTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     marginTop: 5,
+    color: '#664E2D',
   },
   sectionSeparator: {
     height: 1,
     backgroundColor: '#E0E0E0',
-    marginHorizontal: 16,
+    marginHorizontal: 12,
+  },
+  dateMealContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  dateTimeContainer: {
+    flexDirection: 'column',
+  },
+  dateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#664E2D',
+  },
+  timeText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 4,
   },
 });

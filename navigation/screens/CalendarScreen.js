@@ -1,28 +1,25 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, Modal, TextInput, Button } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, StyleSheet, Modal, ScrollView, Button } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 export default function CalendarScreen({ navigation, route }) {
-  const [selectedDate, setSelectedDate] = useState(''); // Track the selected date
-  const [mealsByDate, setMealsByDate] = useState({}); // Store meals for each date
+  const [selectedDate, setSelectedDate] = useState('');
+  const [mealsByDate, setMealsByDate] = useState({});
   const [modalVisible, setModalVisible] = useState(false);
   const [detailsModalVisible, setDetailsModalVisible] = useState(false);
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [selectedRecipe, setSelectedRecipe] = useState(null); // Selected recipe for viewing details
-  const [editedRecipe, setEditedRecipe] = useState(null); // Recipe being edited
+  const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [activeTab, setActiveTab] = useState('details');
 
-  // Handle new recipe or selected recipe being added
   useEffect(() => {
     if ((route.params?.newRecipe || route.params?.selectedRecipe) && selectedDate) {
       const recipe = route.params.newRecipe || route.params.selectedRecipe;
 
       setMealsByDate((prevMeals) => ({
         ...prevMeals,
-        [selectedDate]: [...(prevMeals[selectedDate] || []), recipe], // Store the full recipe object
+        [selectedDate]: [...(prevMeals[selectedDate] || []), recipe],
       }));
 
-      // Clear the navigation params to prevent re-adding
       navigation.setParams({ newRecipe: null, selectedRecipe: null });
     }
   }, [route.params?.newRecipe, route.params?.selectedRecipe, selectedDate, navigation]);
@@ -46,26 +43,23 @@ export default function CalendarScreen({ navigation, route }) {
   };
 
   const handleDayPress = useCallback((day) => {
-    setSelectedDate(day.dateString); // Set the selected date
+    setSelectedDate(day.dateString);
   }, []);
 
   return (
     <View style={styles.container}>
-      {/* Calendar */}
       <Calendar
         onDayPress={handleDayPress}
         markedDates={{
-          [selectedDate]: { selected: true, marked: true, selectedColor: 'green' },
+          [selectedDate]: { selected: true, marked: true, selectedColor: '#48755C' },
         }}
       />
 
-      {/* Meal Planning Section */}
       <View style={styles.mealSection}>
         <Text style={styles.mealTitle}>
           Meal Planning for {selectedDate || 'Select a Date'}
         </Text>
 
-        {/* Meal List */}
         {mealsByDate[selectedDate] && mealsByDate[selectedDate].length > 0 ? (
           <FlatList
             data={mealsByDate[selectedDate]}
@@ -74,19 +68,12 @@ export default function CalendarScreen({ navigation, route }) {
               <View style={styles.recipeRow}>
                 <TouchableOpacity
                   onPress={() => {
-                    setSelectedRecipe(item); // Pass the full recipe object
+                    setSelectedRecipe(item);
                     setDetailsModalVisible(true);
+                    setActiveTab('details');
                   }}
                 >
                   <Text style={styles.mealItem}>{item.name}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    setEditedRecipe(item); // Pass the recipe to edit
-                    setEditModalVisible(true);
-                  }}
-                >
-                  <Ionicons name="create" size={20} color="blue" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => {
@@ -97,7 +84,7 @@ export default function CalendarScreen({ navigation, route }) {
                     });
                   }}
                 >
-                  <Ionicons name="trash" size={20} color="red" />
+                  <Ionicons name="trash" size={20} color="black" />
                 </TouchableOpacity>
               </View>
             )}
@@ -106,9 +93,8 @@ export default function CalendarScreen({ navigation, route }) {
           <Text style={styles.noMealsText}>No Planning for this Date</Text>
         )}
 
-        {/* Add meal button */}
         <TouchableOpacity style={styles.addButton} onPress={showAddMealModal}>
-          <Ionicons name="add-circle" size={50} color="green" />
+          <Ionicons name="add-circle" size={50} color="#48755C" />
         </TouchableOpacity>
       </View>
 
@@ -119,99 +105,66 @@ export default function CalendarScreen({ navigation, route }) {
         animationType="slide"
         onRequestClose={() => setDetailsModalVisible(false)}
       >
-        <View style={styles.modalView}>
-          {selectedRecipe ? (
-            <>
-              <Text style={styles.modalText}>{selectedRecipe.name}</Text>
-              <Text>{selectedRecipe.description}</Text>
-              <Text>Ingredients:</Text>
-              {selectedRecipe.ingredients.map((ingredient, index) => (
-                <Text key={index}>- {ingredient}</Text>
-              ))}
-              <Text>Steps:</Text>
-              {selectedRecipe.instructions.map((step, index) => (
-                <Text key={index}>{index + 1}. {step}</Text>
-              ))}
-            </>
-          ) : (
-            <Text>No details available.</Text>
-          )}
-          <Button title="Close" onPress={() => setDetailsModalVisible(false)} />
-        </View>
-      </Modal>
-
-      {/* Recipe Edit Modal */}
-      <Modal
-        visible={editModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setEditModalVisible(false)}
-      >
-        <View style={styles.modalView}>
-          <Text style={styles.modalText}>Edit Recipe</Text>
-
-          <Text>Notes:</Text>
-          <TextInput
-            style={styles.input}
-            value={editedRecipe?.notes?.[0] || ''}
-            onChangeText={(text) =>
-              setEditedRecipe((prev) => ({
-                ...prev,
-                notes: [text], // Update notes
-              }))
-            }
-          />
-
-          <Text>Ingredients:</Text>
-          <FlatList
-            data={editedRecipe?.ingredients || []}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item, index }) => (
-              <View style={styles.editRow}>
-                <TextInput
-                  style={styles.input}
-                  value={item}
-                  onChangeText={(text) => {
-                    const updatedIngredients = [...editedRecipe.ingredients];
-                    updatedIngredients[index] = text;
-                    setEditedRecipe((prev) => ({
-                      ...prev,
-                      ingredients: updatedIngredients,
-                    }));
-                  }}
-                />
-                <TouchableOpacity
-                  onPress={() => {
-                    const updatedIngredients = [...editedRecipe.ingredients];
-                    updatedIngredients.splice(index, 1);
-                    setEditedRecipe((prev) => ({
-                      ...prev,
-                      ingredients: updatedIngredients,
-                    }));
-                  }}
-                >
-                  <Ionicons name="trash" size={20} color="red" />
-                </TouchableOpacity>
-              </View>
-            )}
-          />
-
-          {/* Save Changes */}
-          <Button
-            title="Save Changes"
+        <View style={styles.modalContainer}>
+          <TouchableOpacity
+            style={styles.backButton}
             onPress={() => {
-              setMealsByDate((prev) => {
-                const updatedMeals = prev[selectedDate].map((meal) =>
-                  meal === editedRecipe ? editedRecipe : meal
-                );
-                return { ...prev, [selectedDate]: updatedMeals };
-              });
-              setEditModalVisible(false);
+              setDetailsModalVisible(false);
+              navigation.goBack(); // Navigate back to CalendarScreen
             }}
-          />
-          <Button title="Cancel" color="red" onPress={() => setEditModalVisible(false)} />
+          >
+            <Ionicons name="arrow-back-outline" size={30} color="black" />
+          </TouchableOpacity>
+
+          <View style={styles.recipeCard}>
+            <Text style={styles.recipeName}>
+              {selectedRecipe?.name || 'Recipe Details'}
+            </Text>
+            <View style={styles.recipeInfo}>
+              <Text>{selectedRecipe?.time || 'Time not specified'}</Text>
+              <Text>{selectedRecipe?.difficulty || 'Difficulty: Medium'}</Text>
+            </View>
+
+            <View style={styles.tabContainer}>
+              <TouchableOpacity
+                style={[styles.tabButton, activeTab === 'details' && styles.activeTab]}
+                onPress={() => setActiveTab('details')}
+              >
+                <Text style={styles.tabText}>Details</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tabButton, activeTab === 'instructions' && styles.activeTab]}
+                onPress={() => setActiveTab('instructions')}
+              >
+                <Text style={styles.tabText}>Instructions</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.detailsOrInstructions}>
+              {activeTab === 'details' ? (
+                <>
+                  <Text style={styles.sectionTitle}>Ingredients:</Text>
+                  {selectedRecipe?.ingredients?.map((ingredient, index) => (
+                    <Text key={index} style={styles.ingredientItem}>
+                      • {ingredient}
+                    </Text>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <Text style={styles.sectionTitle}>Instructions:</Text>
+                  {selectedRecipe?.instructions?.map((instruction, index) => (
+                    <Text key={index} style={styles.instructionItem}>
+                      {index + 1}. {instruction}
+                    </Text>
+                  ))}
+                </>
+              )}
+            </ScrollView>
+          </View>
         </View>
       </Modal>
+
 
       {/* Modal for Adding Meals */}
       <Modal
@@ -224,9 +177,9 @@ export default function CalendarScreen({ navigation, route }) {
       >
         <View style={styles.modalView}>
           <Text style={styles.modalText}>Choose an Option</Text>
-          <Button title="Add from Saved Recipes" onPress={() => handleAddMeal('saved')} />
-          <Button title="Generate New Recipe" onPress={() => handleAddMeal('new')} />
-          <Button title="Cancel" color="red" onPress={() => setModalVisible(false)} />
+          <Button title="Add from Saved Recipes" color="#48755C" onPress={() => handleAddMeal('saved')} />
+          <Button title="Generate New Recipe" color="#48755C" onPress={() => handleAddMeal('new')} />
+          <Button title="Cancel" color="grey" onPress={() => setModalVisible(false)} />
         </View>
       </Modal>
     </View>
@@ -234,75 +187,26 @@ export default function CalendarScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-  },
-  mealSection: {
-    marginTop: 20,
-    padding: 20,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-  },
-  mealTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  recipeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginVertical: 5,
-    padding: 10,
-    backgroundColor: '#ffe599',
-    borderRadius: 5,
-  },
-  mealItem: {
-    fontSize: 16,
-  },
-  noMealsText: {
-    fontSize: 16,
-    color: '#999',
-    textAlign: 'center',
-    marginVertical: 20,
-  },
-  addButton: {
-    alignSelf: 'flex-end',
-    marginTop: 10,
-  },
-  modalView: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 22,
-    backgroundColor: 'white',
-    padding: 35,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    borderRadius: 10,
-  },
-  modalText: {
-    marginBottom: 15,
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
-    padding: 10,
-    backgroundColor: '#f0f0f0',
-    marginBottom: 10,
-    width: '100%',
-  },
-  editRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 5,
-  },
+  container: { flex: 1, padding: 20, backgroundColor: '#FBF0E9' },
+  mealSection: { marginTop: 20, padding: 20, backgroundColor: '#B8CCBA', borderRadius: 20 },
+  mealTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 10 },
+  recipeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFFFFF', padding: 15, marginVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#E0E0E0' },
+  mealItem: { flex: 1, fontSize: 18, fontWeight: '600', color: '#2E2E2E', marginRight: 10 },
+  noMealsText: { fontSize: 20, color: '#639271', textAlign: 'center', marginVertical: 20 },
+  addButton: { alignSelf: 'flex-end', marginTop: 10 },
+  modalView: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F0DED0', padding: 35, borderRadius: 10 },
+  modalText: { marginBottom: 15, textAlign: 'center', fontSize: 18, fontWeight: 'bold', color: '#664E2D' },
+  modalContainer: { flex: 1, backgroundColor: '#FEF8F5', padding: 20 },
+  backButton: { position: 'absolute', top: 60, left: 20, zIndex: 1 },
+  recipeCard: { padding: 30, borderRadius: 15, backgroundColor: '#FFFFFF', marginTop: 100, borderWidth: 1,borderColor:'#664E2D', },
+  recipeName: { fontSize: 24, fontWeight: 'bold', marginBottom: 10, textAlign: 'left' , color: '#664E2D'},
+  recipeInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, color: '#231F20' },
+  tabContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, backgroundColor: '#E0E0E0', borderRadius: 10 },
+  tabButton: { flex: 1, padding: 15, alignItems: 'center', borderRadius: 10, },
+  activeTab: { backgroundColor: '#B8CCBA' },
+  tabText: { fontWeight: 'bold', color:'#664E2D', },
+  detailsOrInstructions: { maxHeight: 300, marginBottom: 20 },
+  sectionTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 10, color: '#231F20' },
+  ingredientItem: { fontSize: 18, marginBottom: 5 },
+  instructionItem: { fontSize: 18, marginBottom: 10 },
 });

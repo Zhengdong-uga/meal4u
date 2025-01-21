@@ -11,18 +11,25 @@ import {
 import {
     getAuth,
     signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
     GoogleAuthProvider,
     FacebookAuthProvider,
     signInWithPopup,
 } from 'firebase/auth';
 import { firebaseApp } from '../../backend/src/firebase';
+import { getFirestore, doc, setDoc } from 'firebase/firestore';
+
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [name, setName] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isSignUp, setIsSignUp] = useState(false);
 
     const auth = getAuth(firebaseApp);
+    const firestore = getFirestore(firebaseApp);
+    
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -41,11 +48,46 @@ export default function LoginPage() {
         }
     };
 
+    const handleSignUp = async () => {
+        if (!email || !password || !name) {
+            Alert.alert('Missing Fields', 'Please fill in all fields.');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+            const userDocRef = doc(firestore, 'Users', user.uid);
+            await setDoc(userDocRef, {
+                name,
+                email,
+                createdAt: new Date().toISOString(),
+            });
+
+            Alert.alert('Sign Up Successful', 'Your account has been created!');
+        } catch (error) {
+            Alert.alert('Sign Up Failed', error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleGoogleLogin = async () => {
         setLoading(true);
         const provider = new GoogleAuthProvider();
         try {
-            await signInWithPopup(auth, provider);
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+
+            // Save user info to Firestore if it's their first login
+            const userDocRef = doc(firestore, 'Users', user.uid);
+            await setDoc(userDocRef, {
+                name: user.displayName || '',
+                email: user.email,
+                createdAt: new Date().toISOString(),
+            }, { merge: true });
+
             Alert.alert('Login Successful', 'You are now logged in with Google!');
         } catch (error) {
             Alert.alert('Login Failed', error.message);
@@ -58,7 +100,17 @@ export default function LoginPage() {
         setLoading(true);
         const provider = new FacebookAuthProvider();
         try {
-            await signInWithPopup(auth, provider);
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+
+            // Save user info to Firestore if it's their first login
+            const userDocRef = doc(firestore, 'Users', user.uid);
+            await setDoc(userDocRef, {
+                name: user.displayName || '',
+                email: user.email,
+                createdAt: new Date().toISOString(),
+            }, { merge: true });
+
             Alert.alert('Login Successful', 'You are now logged in with Facebook!');
         } catch (error) {
             Alert.alert('Login Failed', error.message);
@@ -67,9 +119,20 @@ export default function LoginPage() {
         }
     };
 
+    
+
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Login</Text>
+            <Text style={styles.title}>{isSignUp ? 'Meal4U' : 'Meal4U'}</Text>
+
+            {isSignUp && (
+                <TextInput
+                    style={styles.input}
+                    placeholder="Name"
+                    value={name}
+                    onChangeText={setName}
+                />
+            )}
 
             <TextInput
                 style={styles.input}
@@ -90,30 +153,42 @@ export default function LoginPage() {
 
             <TouchableOpacity
                 style={[styles.loginButton, loading && styles.disabledButton]}
-                onPress={handleLogin}
+                onPress={isSignUp ? handleSignUp : handleLogin}
                 disabled={loading}
             >
                 {loading ? (
                     <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                    <Text style={styles.loginButtonText}>Login</Text>
+                    <Text style={styles.loginButtonText}>
+                        {isSignUp ? 'Sign Up' : 'Login'}
+                    </Text>
                 )}
             </TouchableOpacity>
 
-            <TouchableOpacity
-                style={[styles.googleButton, loading && styles.disabledButton]}
-                onPress={handleGoogleLogin}
-                disabled={loading}
-            >
-                <Text style={styles.loginButtonText}>Login with Google</Text>
-            </TouchableOpacity>
+            {!isSignUp && (
+                <>
+                    <TouchableOpacity
+                        style={[styles.googleButton, loading && styles.disabledButton]}
+                        onPress={handleGoogleLogin}
+                        disabled={loading}
+                    >
+                        <Text style={styles.loginButtonText}>Login with Google</Text>
+                    </TouchableOpacity>
 
-            <TouchableOpacity
-                style={[styles.facebookButton, loading && styles.disabledButton]}
-                onPress={handleFacebookLogin}
-                disabled={loading}
-            >
-                <Text style={styles.loginButtonText}>Login with Facebook</Text>
+                    <TouchableOpacity
+                        style={[styles.facebookButton, loading && styles.disabledButton]}
+                        onPress={handleFacebookLogin}
+                        disabled={loading}
+                    >
+                        <Text style={styles.loginButtonText}>Login with Facebook</Text>
+                    </TouchableOpacity>
+                </>
+            )}
+
+            <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
+                <Text style={styles.toggleText}>
+                    {isSignUp ? 'Already have an account? Login' : "Don't have an account? Sign Up"}
+                </Text>
             </TouchableOpacity>
         </View>
     );
@@ -172,5 +247,10 @@ const styles = StyleSheet.create({
     },
     disabledButton: {
         opacity: 0.6,
+    },
+    toggleText: {
+        marginTop: 20,
+        textAlign: 'center',
+        color: 'grey',
     },
 });

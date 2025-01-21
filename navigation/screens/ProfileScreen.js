@@ -20,23 +20,26 @@ export default function ProfileScreen({ navigation }) {
                 try {
                     const userDoc = await getDoc(userDocRef);
                     if (userDoc.exists()) {
-                        console.log('User exists:', userDoc.data());
-                        setUserEmail(userDoc.data().email);
-                        setUserFirstName(userDoc.data().name.split(' ')[0]); // Split in case there's a full name
+                        const userData = userDoc.data();
+                        console.log('User data:', userData);
+                        setUserEmail(userData.email || ''); // Fallback to empty string if no email
+                        setUserFirstName(userData.name?.split(' ')[0] || ''); // Fallback to empty string if no name
                     } else {
-                        console.log('No such user!');
+                        console.log('No user document found!');
                     }
-                } catch {
-                    console.error("Error fetching user info: ", error);
+                } catch (error) {
+                    console.error('Error fetching user document:', error);
                 }
             } else {
+                console.log('No user signed in');
                 setUserEmail('');
                 setUserFirstName('');
             }
         });
-
-        return () => unsubscribe();
+    
+        return () => unsubscribe(); // Cleanup listener on unmount
     }, []);
+    
 
     useEffect(() => {
         navigation.setOptions({
@@ -46,11 +49,15 @@ export default function ProfileScreen({ navigation }) {
     }, [navigation]);
 
     const Achievement = ({ color, value, label, shapeStyle }) => (
-        <View style={[styles.achievement, shapeStyle, { backgroundColor: color }]}>
-            <Text style={styles.achievementValue}>{value}</Text>
-            <Text style={styles.achievementLabel}>{label}</Text>
+        <View style={[styles.achievementWrapper]}>
+            <View style={[styles.achievement, shapeStyle, { backgroundColor: color }]}>
+                <Text style={styles.achievementValue}>{value}</Text>
+                <Text style={styles.achievementLabel}>{label}</Text>
+            </View>
+            
         </View>
     );
+    
 
     const handleRecipePress = (recipe) => {
         alert(`Selected Recipe: ${recipe.title}`);
@@ -78,7 +85,10 @@ export default function ProfileScreen({ navigation }) {
         <ScrollView style={styles.container}>
             <View style={styles.profileSection}>
                 <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>ZP</Text>
+                    <Image
+                        source={require('../../assets/avatar.png')}
+                        style={styles.avatar}
+                    />
                 </View>
                 <Text style={styles.name}>{userFirstName}</Text>
                 <Text style={styles.email}>{userEmail}</Text>
@@ -86,17 +96,17 @@ export default function ProfileScreen({ navigation }) {
                     <Text style={styles.editButtonText}>Edit Profile</Text>
                 </TouchableOpacity>
             </View>
-
+    
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Achievements</Text>
                 <View style={styles.achievementsContainer}>
-                    <Achievement color="#FFE082" value="130" label="Meals Generated" shapeStyle={styles.circleAchievement} />
-                    <Achievement color="#A5D6A7" value="85" label="Implemented" shapeStyle={styles.starAchievement} />
-                    <Achievement color="#90CAF9" value="50-60%" label="Food Waste Reduced" shapeStyle={styles.starAchievement} />
-                    <Achievement color="#F48FB1" value="$800" label="Money Saved" shapeStyle={styles.squareAchievement} />
+                    <Achievement color="#739977" value="0" label="Meals Generated" shapeStyle={styles.circleAchievement} />
+                    <Achievement color="#F5EAE1" value="0" label="Implemented" shapeStyle={styles.starAchievement} />
+                    <Achievement color="#B6CAEB" value="0%" label="Food Waste Reduced" shapeStyle={styles.starAchievement} />
+                    <Achievement color="#F5B8DB" value="$0" label="Money Saved" shapeStyle={styles.squareAchievement} />
                 </View>
             </View>
-
+    
             <View style={styles.recipeSection}>
                 <Text style={styles.sectionTitle}>Recent Recipes</Text>
                 <FlatList
@@ -111,7 +121,7 @@ export default function ProfileScreen({ navigation }) {
                     <Text style={styles.seeAllText}>{showAllRecipes ? 'See Less' : 'See All'}</Text>
                 </TouchableOpacity>
             </View>
-
+    
             <Modal
                 animationType="slide"
                 transparent={true}
@@ -129,35 +139,48 @@ export default function ProfileScreen({ navigation }) {
                         <View style={styles.modalSection}>
                             <Text style={styles.modalSectionTitle}>SETTINGS</Text>
                             {[
-                                { title: 'Account details', onPress: () => alert('Account details clicked') },
-                                { title: 'Payment cards', onPress: () => alert('Payment cards clicked') },
-                                { title: 'Notification', onPress: () => alert('Notification clicked') },
+                                { title: 'Account details', disabled: true },
+                                { title: 'Payment cards', disabled: true },
+                                { title: 'Notification', disabled: true },
                                 {
                                     title: 'Eating preference',
+                                    disabled: false,
                                     onPress: () => {
                                         setModalVisible(false);
                                         navigation.navigate('EatingPreference');
                                     },
                                 },
                             ].map((item, idx) => (
-                                <TouchableOpacity key={idx} style={styles.modalItem} onPress={item.onPress}>
-                                    <Text>{item.title}</Text>
+                                <TouchableOpacity
+                                    key={idx}
+                                    style={[
+                                        styles.modalItem,
+                                        item.disabled ? styles.disabledItem : styles.highlightedItem,
+                                    ]}
+                                    onPress={!item.disabled ? item.onPress : null}
+                                    activeOpacity={item.disabled ? 1 : 0.7}
+                                >
+                                    <Text
+                                        style={item.disabled ? styles.disabledText : styles.highlightedText}
+                                    >
+                                        {item.title}
+                                    </Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
                         <View style={styles.modalSection}>
                             <Text style={styles.modalSectionTitle}>SUPPORT</Text>
-                            {['Support center', 'Contact us', 'About', 'Report a problem'].map((item, idx) => (
+                            {['Support center', 'Contact us'].map((item, idx) => (
                                 <TouchableOpacity key={idx} style={styles.modalItem}>
-                                    <Text>{item}</Text>
+                                    <Text style={styles.disabledText}>{item}</Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
                         <View style={styles.modalSection}>
                             <Text style={styles.modalSectionTitle}>OTHER</Text>
-                            {['Meet our nutritionist', 'Support sustainability', 'Share M4U', 'Leave a Feedback'].map((item, idx) => (
+                            {['Meet our nutritionist', 'Support sustainability', ].map((item, idx) => (
                                 <TouchableOpacity key={idx} style={styles.modalItem}>
-                                    <Text>{item}</Text>
+                                    <Text style={styles.disabledText}>{item}</Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
@@ -169,21 +192,30 @@ export default function ProfileScreen({ navigation }) {
             </Modal>
         </ScrollView>
     );
-}
+}    
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: '#FEF8F5',
     },
     profileSection: {
         alignItems: 'center',
-        backgroundColor: '#F5D867',
+        backgroundColor: '#FBF0E9',
         borderBottomLeftRadius: 40,
         borderBottomRightRadius: 40,
         padding: 30,
         paddingTop: 70,
         borderWidth: 1,
+        borderColor: '#F5EAE1',
+        shadowColor: '#000', // Shadow color
+        shadowOffset: {
+          width: 4, // Horizontal offset
+          height: 4, // Vertical offset
+        },
+        shadowOpacity: 0.25, // Shadow transparency
+        shadowRadius: 4, // Blur radius
+        elevation: 2, // Android shadow
     },
     avatar: {
         width: 100,
@@ -209,11 +241,12 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     editButton: {
-        backgroundColor: 'black',
+        backgroundColor: '#48755C',
         paddingHorizontal: 20,
         paddingVertical: 12,
-        borderRadius: 20,
+        borderRadius: 30,
         marginTop: 20,
+
     },
     editButtonText: {
         color: 'white',
@@ -226,43 +259,51 @@ const styles = StyleSheet.create({
         fontSize: 22,
         fontWeight: 'bold',
         marginBottom: 20,
+        color: '#49351C',
     },
     achievementsContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
-        flexWrap: 'nowrap',
+        justifyContent: 'space-evenly',
+        alignItems: 'center',
+        flexWrap: 'wrap',
         marginBottom: 10,
     },
+    achievementWrapper: {
+        alignItems: 'center',
+        marginHorizontal: 0,
+        marginBottom: 20,
+    },
     achievement: {
-        width: '30%',
+        width: 160,
+        height: 120,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 10,
-        marginBottom: 15,
+        borderRadius: 50, // Default to circular
+        borderWidth: 1,
+        borderColor: '#231F20',
+
     },
     circleAchievement: {
-        borderRadius: 100,
-        borderWidth: 1,
+        borderRadius: 10,
     },
     starAchievement: {
-        width: '30%',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 10,
+         // Rotate to create diamond-like shapes
         borderRadius: 10,
-        borderWidth: 1,
     },
     squareAchievement: {
         borderRadius: 10,
-        borderWidth: 1,
     },
     achievementValue: {
         fontSize: 24,
         fontWeight: 'bold',
+        color: '#231F20',
     },
     achievementLabel: {
+        marginTop: 0,
+        fontSize: 14,
+        fontWeight: '600',
         textAlign: 'center',
-        fontSize: 16,
+        color: '#231F20',
     },
     recipeSection: {
         padding: 20,
@@ -314,24 +355,45 @@ const styles = StyleSheet.create({
     },
     modalSection: {
         marginBottom: 20,
+        paddingHorizontal: 10, // Added padding for consistency
     },
     modalSectionTitle: {
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: 'bold',
-        color: '#A5A5A5',
+        color: '#49351C', // Consistent color
         marginBottom: 10,
         textAlign: 'left',
     },
     modalItem: {
-        paddingVertical: 10,
-        paddingLeft: 20,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 10,
+        marginVertical: 5,
+        backgroundColor: '#F8F8F8', // Light background for consistency
+        justifyContent: 'center',
+    },
+    disabledItem: {
+        opacity: 0.5, // Reduced opacity for disabled items
+    },
+    highlightedItem: {
+        backgroundColor: '#48755C', // Highlight color
+    },
+    disabledText: {
+        color: 'grey',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    highlightedText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
     logoutButton: {
-        backgroundColor: 'white',
-        borderWidth: 1,
-        borderColor: 'black',
-        paddingVertical: 10,
-        paddingHorizontal: 30,
+        backgroundColor: '#F0DED0',
+        borderWidth: 0,
+        borderColor: '#49351C',
+        paddingVertical: 12,
+        paddingHorizontal: 40,
         borderRadius: 20,
         alignItems: 'center',
         alignSelf: 'center',
@@ -339,6 +401,7 @@ const styles = StyleSheet.create({
         marginBottom: 40,
     },
     logoutButtonText: {
-        color: 'black',
+        color: '#49351C',
+        fontWeight: 'bold',
     },
 });
