@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Firebase configuration
 const firebaseConfig = {
     // discord
+
 };
 
 // Initialize Firebase App
