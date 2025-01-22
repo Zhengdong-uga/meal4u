@@ -36,7 +36,7 @@ const firebaseConfig = {
     apiKey: "AIzaSyA9BYzT4z6d97fEays0nAxT2emRTEhQvbE",
     authDomain: "meal4u-bc86f.firebaseapp.com",
     projectId: "meal4u-bc86f",
-    storageBucket: "meal4u-bc86f.appspot.com", // 修正了存储桶 URL 后缀
+    storageBucket: "meal4u-bc86f.appspot.app", // 修正了存储桶 URL 后缀
     messagingSenderId: "809015044004",
     appId: "1:809015044004:web:78a52d030ee36f4026c331",
     measurementId: "G-NJYPH5NDEC"
