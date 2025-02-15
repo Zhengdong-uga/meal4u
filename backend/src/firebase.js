@@ -1,8 +1,3 @@
-// // Import Firebase modules
-// import { initializeApp } from 'firebase/app';
-// import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
-// import AsyncStorage from '@react-native-async-storage/async-storage';
-
 // // Firebase configuration
 import { initializeApp } from 'firebase/app';
 import { 
@@ -17,18 +12,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AppleAuthentication from 'expo-apple-authentication';
 
-// Firebase 配置
+// Firebase 
 const firebaseConfig = {
     // discord,
 };
 
-// 初始化 Firebase
+//  Firebase
 const app = initializeApp(firebaseConfig);
 const auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage),
 });
 
-// ✅ 使用 Expo `expo-auth-session` 进行 Google 登录
+// ✅ use Expo `expo-auth-session`for google
 const signInWithGoogle = async () => {
     const [request, response, promptAsync] = Google.useAuthRequest({
 // discord 
@@ -44,7 +39,7 @@ const signInWithGoogle = async () => {
     }
 };
 
-// ✅ 使用 Expo `expo-apple-authentication` 进行 Apple 登录
+// ✅ use Expo `expo-apple-authentication` for apple
 const signInWithApple = async () => {
     try {
         const credential = await AppleAuthentication.signInAsync({
