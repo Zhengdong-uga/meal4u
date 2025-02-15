@@ -11,16 +11,21 @@
   "dependencies": {
     "@expo/metro-runtime": "~4.0.0",
     "@google/generative-ai": "^0.21.0",
+    "@invertase/react-native-apple-authentication": "^2.4.0",
     "@react-native-async-storage/async-storage": "1.23.1",
-    "@react-native-firebase/auth": "^21.6.1",
+    "@react-native-firebase/app": "^21.10.0",
+    "@react-native-firebase/auth": "^21.10.0",
     "@react-navigation/bottom-tabs": "^6.6.1",
     "@react-navigation/drawer": "^6.7.2",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/stack": "^6.4.1",
     "dayjs": "^1.11.13",
     "expo": "~52.0.18",
+    "expo-apple-authentication": "~7.1.3",
+    "expo-auth-session": "~6.0.3",
+    "expo-notifications": "~0.29.12",
     "expo-status-bar": "~2.0.0",
-    "firebase": "^10.0.0",
+    "firebase": "^10.14.1",
     "firebaseui": "^6.1.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
@@ -36,7 +41,8 @@
     "react-native-toast-message": "^2.2.1",
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "~0.19.13",
-    "expo-notifications": "~0.29.12"
+    "undefined": "expo-auth-session/providers/google",
+    "expo-dev-client": "~5.0.12"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

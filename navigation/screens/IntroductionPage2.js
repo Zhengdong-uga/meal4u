@@ -14,7 +14,7 @@ export default function IntroductionPage2({ navigation, route }) {
 
     return (
         <ImageBackground
-            source={require('../../assets/Intro1.png')} // Replace with your actual image path
+            source={require('../../assets/intro1.png')} // Replace with your actual image path
             style={styles.background}
         >
             <View style={styles.overlay}>
