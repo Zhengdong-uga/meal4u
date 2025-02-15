@@ -39,7 +39,7 @@ export default function LoginPage() {
         checkAppleAvailability();
     }, []);
 
-    const [request, response, promptAsync] = Google.useAuthRequest({
+    const [request, response, promptAsync] = Google.useAuthRequest({ // discord
     });
 
     useEffect(() => {
