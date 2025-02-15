@@ -1,6 +1,4 @@
 ---
-
-
 Ensure your system meets the following requirements before proceeding:
 
 - [**Node.js**](https://github.com/nvm-sh/nvm) (Recommended: use `nvm` to manage versions)
