@@ -23,10 +23,12 @@
     "expo": "~52.0.18",
     "expo-apple-authentication": "~7.1.3",
     "expo-auth-session": "~6.0.3",
+    "expo-dev-client": "~5.0.12",
     "expo-notifications": "~0.29.12",
     "expo-status-bar": "~2.0.0",
     "firebase": "^10.14.1",
     "firebaseui": "^6.1.0",
+    "lottie-react-native": "^7.2.2",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-native": "0.76.5",
@@ -41,8 +43,7 @@
     "react-native-toast-message": "^2.2.1",
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "~0.19.13",
-    "undefined": "expo-auth-session/providers/google",
-    "expo-dev-client": "~5.0.12"
+    "undefined": "expo-auth-session/providers/google"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

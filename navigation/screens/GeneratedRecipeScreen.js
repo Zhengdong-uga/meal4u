@@ -26,6 +26,7 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
                     ingredients: recipe.ingredients,
                     instructions: recipe.instructions,
                     description: recipe.description,
+                    nutrition: recipe.nutrition || {}, // Add nutrition to be saved
                 };
                 await updateDoc(userDocRef, {
                     savedRecipes: [...userDoc.data().savedRecipes, recipeData],
@@ -53,10 +54,15 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
     navigation.navigate('Calendar', { newRecipe: recipe });
   };
 
+  const handleBackButton = () => {
+    // Navigate back to the main tabs and then to the AI tab
+    navigation.navigate('Main', { screen: 'Meal Generating' });
+  };
+
   return (
     <View style={styles.container}>
       <TouchableOpacity
-        onPress={() => navigation.navigate('AI')}
+        onPress={handleBackButton}
         style={styles.backButton}
       >
         <Ionicons name="arrow-back-outline" size={30} color="black" />
@@ -76,13 +82,19 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
             style={[styles.tabButton, activeTab === 'details' && styles.activeTab]}
             onPress={() => setActiveTab('details')}
           >
-            <Text style={styles.tabText}>Details</Text>
+            <Text style={styles.tabText}>Ingredients</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 'instructions' && styles.activeTab]}
             onPress={() => setActiveTab('instructions')}
           >
             <Text style={styles.tabText}>Instructions</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'nutrition' && styles.activeTab]}
+            onPress={() => setActiveTab('nutrition')}
+          >
+            <Text style={styles.tabText}>Nutrition</Text>
           </TouchableOpacity>
         </View>
 
@@ -97,7 +109,7 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
                   </Text>
                 ))}
             </>
-          ) : (
+          ) : activeTab === 'instructions' ? (
             <>
               <Text style={styles.sectionTitle}>Instructions:</Text>
               {recipe.instructions &&
@@ -106,6 +118,22 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
                     {index + 1}. {instruction}
                   </Text>
                 ))}
+            </>
+          ) : (
+            <>
+              <Text style={styles.sectionTitle}>Nutrition:</Text>
+              {recipe.nutrition ? (
+                <View style={styles.nutritionContainer}>
+                  {Object.entries(recipe.nutrition).map(([key, value], index) => (
+                    <View key={index} style={styles.nutritionRow}>
+                      <Text style={styles.nutritionLabel}>{key}</Text>
+                      <Text style={styles.nutritionValue}>{value}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.noNutritionText}>Nutrition information not available</Text>
+              )}
             </>
           )}
         </ScrollView>
@@ -143,7 +171,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F4F4F4',
     borderRadius: 10,
   },
-  tabButton: { flex: 1, padding: 15, alignItems: 'center', borderRadius: 10 },
+  tabButton: { flex: 1, padding: 12, alignItems: 'center', borderRadius: 12 },
   activeTab: { backgroundColor: '#E4E4E4' },
   tabText: { fontWeight: 'bold', color: '#664E2D' },
   detailsOrInstructions: { maxHeight: 300, marginBottom: 20 },
@@ -164,5 +192,30 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#664E2D', // Original brown text for "Save Recipe"
   },
-  
+  // New styles for nutrition tab
+  nutritionContainer: {
+    marginTop: 5,
+  },
+  nutritionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+  },
+  nutritionLabel: {
+    fontSize: 16,
+    color: '#664E2D',
+  },
+  nutritionValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#48755C',
+  },
+  noNutritionText: {
+    fontSize: 16,
+    color: '#999999',
+    textAlign: 'center',
+    padding: 20,
+  },
 });
