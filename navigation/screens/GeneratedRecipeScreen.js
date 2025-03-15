@@ -10,33 +10,30 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
 
   const saveRecipeToFirebase = async (recipe) => {
     const user = auth.currentUser;
-    console.log(user)
-    console.log(recipe)
     if (user) {
-        const firestore = getFirestore();
-        const userDocRef = doc(firestore, 'Users', user.uid);
-        try {
-            const userDoc = await getDoc(userDocRef);
-            console.log(userDoc.savedRecipes)
-            if (userDoc.exists()) {
-                const recipeData = {
-                    name: recipe.name,
-                    time: recipe.time,
-                    difficulty: recipe.difficulty,
-                    ingredients: recipe.ingredients,
-                    instructions: recipe.instructions,
-                    description: recipe.description,
-                    nutrition: recipe.nutrition || {}, // Add nutrition to be saved
-                };
-                await updateDoc(userDocRef, {
-                    savedRecipes: [...userDoc.data().savedRecipes, recipeData],
-                });
-            }
-        } catch (error) {
-            console.error('Error saving recipe:', error);
+      const firestore = getFirestore();
+      const userDocRef = doc(firestore, 'Users', user.uid);
+      try {
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          const recipeData = {
+            name: recipe.name,
+            time: recipe.time,
+            difficulty: recipe.difficulty,
+            ingredients: recipe.ingredients,
+            instructions: recipe.instructions,
+            description: recipe.description,
+            nutrition: recipe.nutrition || {}, // Add nutrition to be saved
+          };
+          await updateDoc(userDocRef, {
+            savedRecipes: [...userDoc.data().savedRecipes, recipeData],
+          });
         }
+      } catch (error) {
+        console.error('Error saving recipe:', error);
+      }
     }
-};
+  };
 
   const handleSaveRecipe = async () => {
     console.log("Saving recipe:", recipe);
@@ -139,12 +136,12 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
         </ScrollView>
 
         <View style={styles.actions}>
-            <TouchableOpacity style={styles.saveButton} onPress={handleSaveRecipe}>
-                <Text style={[styles.buttonText, styles.saveButtonText]}>Save Recipe</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.addToPlanButton} onPress={handleAddToPlan}>
-                <Text style={[styles.buttonText, styles.addToPlanButtonText]}>Add to Plan</Text>
-            </TouchableOpacity>
+          <TouchableOpacity style={styles.saveButton} onPress={handleSaveRecipe}>
+            <Text style={[styles.buttonText, styles.saveButtonText]}>Save Recipe</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addToPlanButton} onPress={handleAddToPlan}>
+            <Text style={[styles.buttonText, styles.addToPlanButtonText]}>Add to Plan</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </View>

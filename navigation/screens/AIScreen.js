@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  FlatList, 
-  StyleSheet, 
-  Modal, 
-  ActivityIndicator,
-  TouchableWithoutFeedback,
-  Keyboard,
-  Animated,
-  SafeAreaView,
-  StatusBar,
-  ScrollView
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    FlatList,
+    StyleSheet,
+    Modal,
+    ActivityIndicator,
+    TouchableWithoutFeedback,
+    Keyboard,
+    Animated,
+    SafeAreaView,
+    StatusBar,
+    ScrollView
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import dayjs from 'dayjs';
@@ -21,137 +21,137 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../../backend/src/firebase';
 import { doc, getDoc, getFirestore } from 'firebase/firestore';
 import { ask_gemini } from '../../backend/api.js';
-import LottieView from 'lottie-react-native'; 
+import LottieView from 'lottie-react-native';
 
 // Loading Animation Modal Component
 const LoadingModal = ({ visible, mealType }) => {
-  if (!visible) return null;
-  
-  // Determine animation source and loading text based on meal type
-  let animationSource = '';
-  let loadingText = '';
-  
-  switch(mealType) {
-    case 'Meals':
-      animationSource = 'https://lottie.host/67a0627c-7316-4f3d-ad13-71e862baae13/ZtTgSnBRX4.lottie';
-      loadingText = 'Preparing your meal...';
-      break;
-    case 'Drinks':
-      animationSource = 'https://lottie.host/9cda8973-9bb4-40ae-ac35-cbe675f9f932/3lBZEOeQDO.lottie';
-      loadingText = 'Shaking your drinks...';
-      break;
-    case 'Dessert':
-      animationSource = 'https://lottie.host/2f7cdf3a-6114-40be-bb2e-0eaae2dbbca9/AnrUhO5BEV.lottie';
-      loadingText = 'Crafting your dessert...';
-      break;
-    default:
-      // Default animation if no meal type is selected
-      animationSource = 'https://lottie.host/9cda8973-9bb4-40ae-ac35-cbe675f9f932/3lBZEOeQDO.lottie';
-      loadingText = 'Cooking up your recipe...';
-  }
-  
-  return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="fade"
-    >
-      <View style={styles.loadingModalOverlay}>
-        <View style={styles.loadingModalContent}>
-          <LottieView
-            source={{ uri: animationSource }}
-            autoPlay
-            loop
-            style={styles.lottieAnimation}
-          />
-          <Text style={styles.loadingText}>{loadingText}</Text>
-        </View>
-      </View>
-    </Modal>
-  );
+    if (!visible) return null;
+
+    // Determine animation source and loading text based on meal type
+    let animationSource = '';
+    let loadingText = '';
+
+    switch (mealType) {
+        case 'Meals':
+            animationSource = 'https://lottie.host/67a0627c-7316-4f3d-ad13-71e862baae13/ZtTgSnBRX4.lottie';
+            loadingText = 'Preparing your meal...';
+            break;
+        case 'Drinks':
+            animationSource = 'https://lottie.host/9cda8973-9bb4-40ae-ac35-cbe675f9f932/3lBZEOeQDO.lottie';
+            loadingText = 'Shaking your drinks...';
+            break;
+        case 'Dessert':
+            animationSource = 'https://lottie.host/2f7cdf3a-6114-40be-bb2e-0eaae2dbbca9/AnrUhO5BEV.lottie';
+            loadingText = 'Crafting your dessert...';
+            break;
+        default:
+            // Default animation if no meal type is selected
+            animationSource = 'https://lottie.host/9cda8973-9bb4-40ae-ac35-cbe675f9f932/3lBZEOeQDO.lottie';
+            loadingText = 'Cooking up your recipe...';
+    }
+
+    return (
+        <Modal
+            visible={visible}
+            transparent={true}
+            animationType="fade"
+        >
+            <View style={styles.loadingModalOverlay}>
+                <View style={styles.loadingModalContent}>
+                    <LottieView
+                        source={{ uri: animationSource }}
+                        autoPlay
+                        loop
+                        style={styles.lottieAnimation}
+                    />
+                    <Text style={styles.loadingText}>{loadingText}</Text>
+                </View>
+            </View>
+        </Modal>
+    );
 };
 
 // Custom Toast Component
 const Toast = ({ visible, message, type }) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(-20)).current;
-  
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateY, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        })
-      ]).start();
-      
-      setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(fadeAnim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(translateY, {
-            toValue: -20,
-            duration: 300,
-            useNativeDriver: true,
-          })
-        ]).start();
-      }, 2000);
-    }
-  }, [visible, fadeAnim, translateY]);
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const translateY = useRef(new Animated.Value(-20)).current;
 
-  if (!visible) return null;
+    useEffect(() => {
+        if (visible) {
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 300,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(translateY, {
+                    toValue: 0,
+                    duration: 300,
+                    useNativeDriver: true,
+                })
+            ]).start();
 
-  const backgroundColor = type === 'success' ? '#48755C' : '#E74C3C';
-  
-  return (
-    <Animated.View 
-      style={[
-        styles.toast, 
-        { 
-          opacity: fadeAnim,
-          transform: [{ translateY }],
-          backgroundColor 
+            setTimeout(() => {
+                Animated.parallel([
+                    Animated.timing(fadeAnim, {
+                        toValue: 0,
+                        duration: 300,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(translateY, {
+                        toValue: -20,
+                        duration: 300,
+                        useNativeDriver: true,
+                    })
+                ]).start();
+            }, 2000);
         }
-      ]}
-    >
-      <Ionicons 
-        name={type === 'success' ? 'checkmark-circle' : 'alert-circle'} 
-        size={22} 
-        color="white" 
-      />
-      <Text style={styles.toastText}>{message}</Text>
-    </Animated.View>
-  );
+    }, [visible, fadeAnim, translateY]);
+
+    if (!visible) return null;
+
+    const backgroundColor = type === 'success' ? '#48755C' : '#E74C3C';
+
+    return (
+        <Animated.View
+            style={[
+                styles.toast,
+                {
+                    opacity: fadeAnim,
+                    transform: [{ translateY }],
+                    backgroundColor
+                }
+            ]}
+        >
+            <Ionicons
+                name={type === 'success' ? 'checkmark-circle' : 'alert-circle'}
+                size={22}
+                color="white"
+            />
+            <Text style={styles.toastText}>{message}</Text>
+        </Animated.View>
+    );
 };
 
 export default function AIScreen({ navigation }) {
     const [ingredientInput, setIngredientInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [preferencesModalVisible, setPreferencesModalVisible] = useState(false);
-    
+
     // Toast state
     const [toast, setToast] = useState({
-      visible: false,
-      message: '',
-      type: 'success'
+        visible: false,
+        message: '',
+        type: 'success'
     });
 
     // Show toast function
     const showToast = (message, type = 'success') => {
-      setToast({ visible: true, message, type });
-      // Auto hide after 2.5 seconds
-      setTimeout(() => {
-        setToast(prev => ({ ...prev, visible: false }));
-      }, 2600);
+        setToast({ visible: true, message, type });
+        // Auto hide after 2.5 seconds
+        setTimeout(() => {
+            setToast(prev => ({ ...prev, visible: false }));
+        }, 2600);
     };
 
     // Obtained from database
@@ -251,16 +251,16 @@ export default function AIScreen({ navigation }) {
         try {
             // Set minimum delay for animation display
             const minDelay = new Promise(resolve => setTimeout(resolve, 2000));
-            
+
             const apiPromise = ask_gemini(
-                userGoal, userDiet, userRestrictions, userDislikes, userLikes, 
-                ingredients, suggestionsNeeded, specialRequest, mealType, 
+                userGoal, userDiet, userRestrictions, userDislikes, userLikes,
+                ingredients, suggestionsNeeded, specialRequest, mealType,
                 prepareTime, dishType
             );
-            
+
             // Wait for both the API call and minimum delay
             const [apiResult] = await Promise.all([apiPromise, minDelay]);
-            
+
             const result = JSON.parse(apiResult);
 
             const generatedRecipe = {
@@ -270,6 +270,7 @@ export default function AIScreen({ navigation }) {
                 difficulty: result.difficulty,
                 ingredients: result.ingredients,
                 instructions: result.stepsOfPreparation,
+                nutrition: result.nutrition,
                 notes: ['Generated with AI based on your preferences.'],
             };
 
@@ -288,12 +289,12 @@ export default function AIScreen({ navigation }) {
     return (
         <SafeAreaView style={styles.safeArea}>
             <StatusBar barStyle="dark-content" />
-            <Toast 
-                visible={toast.visible} 
-                message={toast.message} 
-                type={toast.type} 
+            <Toast
+                visible={toast.visible}
+                message={toast.message}
+                type={toast.type}
             />
-            
+
             <View style={styles.header}>
                 <View style={styles.dateContainer}>
                     <Text style={styles.dayText}>{dayOfWeek}</Text>
@@ -310,7 +311,7 @@ export default function AIScreen({ navigation }) {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView 
+            <ScrollView
                 style={styles.scrollContainer}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
@@ -329,10 +330,10 @@ export default function AIScreen({ navigation }) {
                                     onSubmitEditing={handleAddIngredient}
                                     returnKeyType="done"
                                 />
-                                
+
                                 <View style={styles.quickSuggestionsContainer}>
                                     <Text style={styles.suggestionsLabel}>Quick add:</Text>
-                                    <ScrollView 
+                                    <ScrollView
                                         horizontal
                                         showsHorizontalScrollIndicator={false}
                                         style={styles.suggestionsScroll}
@@ -351,14 +352,14 @@ export default function AIScreen({ navigation }) {
                                         ))}
                                     </ScrollView>
                                 </View>
-                                
+
                                 {ingredients.length > 0 && (
                                     <View style={styles.ingredientsContainer}>
                                         <FlatList
                                             data={ingredients}
                                             renderItem={({ item }) => (
-                                                <TouchableOpacity 
-                                                    style={styles.ingredient} 
+                                                <TouchableOpacity
+                                                    style={styles.ingredient}
                                                     onPress={() => handleRemoveIngredient(item)}
                                                     activeOpacity={0.7}
                                                 >
@@ -381,7 +382,7 @@ export default function AIScreen({ navigation }) {
                             <View style={styles.optionContainer}>
                                 <TouchableOpacity
                                     style={[
-                                        styles.optionButton, 
+                                        styles.optionButton,
                                         suggestionsNeeded === true ? styles.selectedOption : null
                                     ]}
                                     onPress={() => setSuggestionsNeeded(true)}
@@ -398,7 +399,7 @@ export default function AIScreen({ navigation }) {
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[
-                                        styles.optionButton, 
+                                        styles.optionButton,
                                         suggestionsNeeded === false ? styles.selectedOption : null
                                     ]}
                                     onPress={() => setSuggestionsNeeded(false)}
@@ -436,7 +437,7 @@ export default function AIScreen({ navigation }) {
                                     <TouchableOpacity
                                         key={type}
                                         style={[
-                                            styles.mealTypeButton, 
+                                            styles.mealTypeButton,
                                             mealType === type ? styles.selectedOption : null
                                         ]}
                                         onPress={() => setMealType(type)}
@@ -504,7 +505,7 @@ export default function AIScreen({ navigation }) {
                             <View style={styles.modalContent}>
                                 <View style={styles.modalHeader}>
                                     <Text style={styles.modalTitle}>Recipe Preference</Text>
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         onPress={() => setPreferencesModalVisible(false)}
                                         style={styles.closeButton}
                                     >
@@ -544,15 +545,15 @@ export default function AIScreen({ navigation }) {
                                     ))}
 
                                     <View style={styles.modalButtonsContainer}>
-                                        <TouchableOpacity 
-                                            style={styles.clearButton} 
+                                        <TouchableOpacity
+                                            style={styles.clearButton}
                                             onPress={clearPreferences}
                                             activeOpacity={0.7}
                                         >
                                             <Text style={styles.clearButtonText}>Clear All</Text>
                                         </TouchableOpacity>
-                                        <TouchableOpacity 
-                                            style={styles.applyButton} 
+                                        <TouchableOpacity
+                                            style={styles.applyButton}
                                             onPress={savePreferences}
                                             activeOpacity={0.7}
                                         >
@@ -583,37 +584,37 @@ const styles = StyleSheet.create({
     },
     // Loading Animation Styles
     loadingModalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-      justifyContent: 'center',
-      alignItems: 'center',
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     loadingModalContent: {
-      backgroundColor: 'white',
-      borderRadius: 16,
-      padding: 20,
-      alignItems: 'center',
-      justifyContent: 'center',
-      width: '80%',
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 4,
-      },
-      shadowOpacity: 0.3,
-      shadowRadius: 6,
-      elevation: 5,
+        backgroundColor: 'white',
+        borderRadius: 16,
+        padding: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '80%',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 5,
     },
     lottieAnimation: {
-      width: 200,
-      height: 200,
+        width: 200,
+        height: 200,
     },
     loadingText: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: '#664E2D',
-      marginTop: 10,
-      textAlign: 'center',
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#664E2D',
+        marginTop: 10,
+        textAlign: 'center',
     },
     // Toast styles
     toast: {
@@ -844,8 +845,8 @@ const styles = StyleSheet.create({
         marginTop: 10,
         shadowColor: '#000',
         shadowOffset: {
-          width: 4,
-          height: 4,
+            width: 4,
+            height: 4,
         },
         shadowOpacity: 0.25,
         shadowRadius: 4,

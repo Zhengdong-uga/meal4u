@@ -1,27 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  TouchableOpacity, 
-  Image, 
-  StyleSheet, 
-  ScrollView, 
-  Modal, 
-  SafeAreaView, 
-  StatusBar,
-  Alert,
-  Linking,
-  PanResponder,
-  Animated,
-  Dimensions
+import {
+    View,
+    Text,
+    FlatList,
+    TouchableOpacity,
+    Image,
+    StyleSheet,
+    ScrollView,
+    Modal,
+    SafeAreaView,
+    StatusBar,
+    Alert,
+    Linking,
+    PanResponder,
+    Animated,
+    Dimensions
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { savedRecipes } from '../../data/savedRecipeData.js';
-
+// import { savedRecipes } from '../../data/savedRecipeData.js';
 import { getAuth, signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth, firestore } from '../../backend/src/firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, getFirestore } from 'firebase/firestore';
 
 const { height } = Dimensions.get('window');
 
@@ -34,7 +33,10 @@ export default function ProfileScreen({ navigation }) {
     const [userFirstName, setUserFirstName] = useState('');
     const [userAvatar, setUserAvatar] = useState(null);
     const [userId, setUserId] = useState('');
-    
+    const [savedRecipes, setSavedRecipes] = useState([]);
+    const [mealsGeneratedScore, setMealsGeneratedScore] = useState(0);
+    const [mealsImplementedScore, setMealsImplementedScore] = useState(0);
+
     // Modal animation
     const panY = useRef(new Animated.Value(height)).current;
     const translateY = panY.interpolate({
@@ -79,7 +81,7 @@ export default function ProfileScreen({ navigation }) {
         } else if (type === 'avatar') {
             setAvatarModalVisible(true);
         }
-        
+
         Animated.timing(panY, {
             toValue: 0,
             duration: 300,
@@ -98,7 +100,7 @@ export default function ProfileScreen({ navigation }) {
             resetModalPosition();
         });
     };
-    
+
     // Diet-themed avatars
     const avatarOptions = [
         { id: 1, name: 'Default', source: require('../../assets/avatar.png') },
@@ -108,6 +110,37 @@ export default function ProfileScreen({ navigation }) {
         { id: 5, name: 'Keto', source: require('../../assets/avatar.png') },
         { id: 6, name: 'Paleo', source: require('../../assets/avatar.png') },
     ];
+
+    const fetchSavedRecipes = async () => {
+        try {
+            const user = auth.currentUser;
+            if (user) {
+                const firestore = getFirestore();
+                const userDocRef = doc(firestore, 'Users', user.uid);
+
+                try {
+                    const userDoc = await getDoc(userDocRef); // Fetch the user document
+                    if (userDoc.exists()) {
+                        setSavedRecipes(userDoc.data().savedRecipes);
+                        setMealsGeneratedScore(savedRecipes.length);
+                        setMealsImplementedScore(userDoc.data().mealsImplemented);
+                    } else {
+                        console.log("User document does not exist");
+                    }
+                } catch (error) {
+                    console.error('Error fetching user document:', error);
+                }
+            } else {
+                console.log("No user is currently authenticated");
+            }
+        } catch (error) {
+            console.error('Error fetching user from Firebase Auth:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchSavedRecipes();
+    })
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -136,10 +169,10 @@ export default function ProfileScreen({ navigation }) {
                 setUserId('');
             }
         });
-    
+
         return () => unsubscribe();
     }, []);
-    
+
     useEffect(() => {
         navigation.setOptions({
             headerTransparent: true,
@@ -169,7 +202,7 @@ export default function ProfileScreen({ navigation }) {
 
     const logout = () => {
         closeModals();
-        
+
         signOut(auth)
             .then(() => {
                 Alert.alert('Logged out', 'You have been logged out successfully');
@@ -185,11 +218,11 @@ export default function ProfileScreen({ navigation }) {
         closeModals();
         Linking.openURL('https://www.persimmoners.com/');
     };
-    
+
     const handleAvatarPress = () => {
         openModal('avatar');
     };
-    
+
     const selectAvatar = async (avatarId) => {
         try {
             if (userId) {
@@ -212,8 +245,8 @@ export default function ProfileScreen({ navigation }) {
             <StatusBar barStyle="dark-content" />
             <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
                 <View style={styles.profileSection}>
-                    <TouchableOpacity 
-                        style={styles.avatarContainer} 
+                    <TouchableOpacity
+                        style={styles.avatarContainer}
                         onPress={handleAvatarPress}
                     >
                         <Image
@@ -226,38 +259,38 @@ export default function ProfileScreen({ navigation }) {
                     </TouchableOpacity>
                     <Text style={styles.name}>{userFirstName || 'Hi there'}</Text>
                     <Text style={styles.email}>{userEmail}</Text>
-                    <TouchableOpacity 
-                        style={styles.editButton} 
+                    <TouchableOpacity
+                        style={styles.editButton}
                         onPress={() => openModal('account')}
                     >
                         <Text style={styles.editButtonText}>Edit Profile</Text>
                     </TouchableOpacity>
                 </View>
-        
+
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Your Stats</Text>
                     <View style={styles.achievementsContainer}>
-                        <Achievement color="#F2F2F2" value="0" label="Meals Generated" />
-                        <Achievement color="#F2F2F2" value="0" label="Implemented" />
+                        <Achievement color="#F2F2F2" value={mealsGeneratedScore} label="Meals Generated" />
+                        <Achievement color="#F2F2F2" value={mealsImplementedScore} label="Implemented" />
                     </View>
                 </View>
-        
+
                 <View style={styles.recipeSection}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.recipeTitleRow}
                         onPress={() => setShowAllRecipes(!showAllRecipes)}
                     >
                         <Text style={styles.sectionTitle}>Saved Recipes</Text>
                         <View style={styles.viewAllContainer}>
                             <Text style={styles.seeAllText}>View All</Text>
-                            <Icon 
-                                name={showAllRecipes ? "chevron-down" : "chevron-forward"} 
-                                size={16} 
-                                color="#48755C" 
+                            <Icon
+                                name={showAllRecipes ? "chevron-down" : "chevron-forward"}
+                                size={16}
+                                color="#48755C"
                             />
                         </View>
                     </TouchableOpacity>
-                    
+
                     {savedRecipes.length > 0 ? (
                         <FlatList
                             data={showAllRecipes ? savedRecipes : savedRecipes.slice(0, 2)}
@@ -271,7 +304,7 @@ export default function ProfileScreen({ navigation }) {
                         <View style={styles.emptyRecipesContainer}>
                             <Icon name="bookmark-outline" size={40} color="#CCCCCC" />
                             <Text style={styles.emptyRecipesText}>No saved recipes yet</Text>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.addRecipeButton}
                                 onPress={() => navigation.navigate('AI')}
                             >
@@ -279,15 +312,15 @@ export default function ProfileScreen({ navigation }) {
                             </TouchableOpacity>
                         </View>
                     )}
-                    
-                    <TouchableOpacity 
+
+                    <TouchableOpacity
                         style={styles.browseAllButton}
                         onPress={() => navigation.navigate('SavedRecipes')}
                     >
                         <Text style={styles.browseAllText}>Browse All Recipes</Text>
                     </TouchableOpacity>
                 </View>
-        
+
                 {/* Updated Account Management Modal */}
                 <Modal
                     animationType="none"
@@ -297,15 +330,15 @@ export default function ProfileScreen({ navigation }) {
                     statusBarTranslucent
                 >
                     <View style={styles.modalOverlay}>
-                        <Animated.View 
+                        <Animated.View
                             style={[
-                                styles.modalContent, 
+                                styles.modalContent,
                                 { transform: [{ translateY: translateY }] }
                             ]}
                             {...panResponder.panHandlers}
                         >
                             <View style={styles.modalDragIndicator} />
-                            
+
                             <View style={styles.modalHeader}>
                                 <Text style={styles.modalTitle}>Manage account</Text>
                                 <TouchableOpacity onPress={closeModals}>
@@ -313,7 +346,7 @@ export default function ProfileScreen({ navigation }) {
                                 </TouchableOpacity>
                             </View>
 
-                            <ScrollView 
+                            <ScrollView
                                 style={styles.modalScrollView}
                                 showsVerticalScrollIndicator={false}
                             >
@@ -329,17 +362,17 @@ export default function ProfileScreen({ navigation }) {
                                         <Text style={styles.modalItemText}>Eating preference</Text>
                                     </TouchableOpacity>
                                 </View>
-                                
+
                                 <View style={styles.modalSection}>
                                     <Text style={styles.modalSectionTitle}>SUPPORT</Text>
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         style={styles.modalItem}
                                         onPress={handleContactUs}
                                     >
                                         <Text style={styles.modalItemText}>Contact us</Text>
                                     </TouchableOpacity>
                                 </View>
-                                
+
                                 <View style={styles.modalSection}>
                                     <Text style={styles.modalSectionTitle}>OTHER</Text>
                                     {['Meet our nutritionist', 'Support sustainability'].map((item, idx) => (
@@ -348,7 +381,7 @@ export default function ProfileScreen({ navigation }) {
                                         </TouchableOpacity>
                                     ))}
                                 </View>
-                                
+
                                 <TouchableOpacity style={styles.logoutButton} onPress={logout}>
                                     <Text style={styles.logoutButtonText}>Log out</Text>
                                 </TouchableOpacity>
@@ -356,7 +389,7 @@ export default function ProfileScreen({ navigation }) {
                         </Animated.View>
                     </View>
                 </Modal>
-                
+
                 {/* Updated Avatar Selection Modal */}
                 <Modal
                     animationType="none"
@@ -366,15 +399,15 @@ export default function ProfileScreen({ navigation }) {
                     statusBarTranslucent
                 >
                     <View style={styles.modalOverlay}>
-                        <Animated.View 
+                        <Animated.View
                             style={[
-                                styles.modalContent, 
+                                styles.modalContent,
                                 { transform: [{ translateY: translateY }] }
                             ]}
                             {...panResponder.panHandlers}
                         >
                             <View style={styles.modalDragIndicator} />
-                            
+
                             <View style={styles.modalHeader}>
                                 <Text style={styles.modalTitle}>Choose your avatar</Text>
                                 <TouchableOpacity onPress={closeModals}>
@@ -384,7 +417,7 @@ export default function ProfileScreen({ navigation }) {
 
                             <View style={styles.avatarsGrid}>
                                 {avatarOptions.map((avatar) => (
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         key={avatar.id}
                                         style={[
                                             styles.avatarOption,
@@ -591,7 +624,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         fontSize: 16,
     },
-    
+
     // Updated Modal Styles
     modalOverlay: {
         flex: 1,

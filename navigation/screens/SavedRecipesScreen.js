@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Image, 
-  SafeAreaView,
-  TextInput,
-  StatusBar,
-  ActivityIndicator
+import {
+    View,
+    Text,
+    FlatList,
+    TouchableOpacity,
+    StyleSheet,
+    Image,
+    SafeAreaView,
+    TextInput,
+    StatusBar,
+    ActivityIndicator
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { savedRecipes } from '../../data/savedRecipeData.js';
+import { auth } from '../../backend/src/firebase';
+import { doc, getDoc, updateDoc, getFirestore } from 'firebase/firestore';
 
 export default function SavedRecipesScreen({ navigation, route }) {
     const [recipes, setRecipes] = useState(savedRecipes);
@@ -20,7 +22,7 @@ export default function SavedRecipesScreen({ navigation, route }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState('All');
-    
+
     // Categories for filtering
     const categories = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Snacks'];
 
@@ -31,20 +33,20 @@ export default function SavedRecipesScreen({ navigation, route }) {
     useEffect(() => {
         // Set navigation title based on mode
         navigation.setOptions({
-            headerTitle: isSelectionMode 
+            headerTitle: isSelectionMode
                 ? `Select a ${mealType || 'meal'}`
                 : 'Saved Recipes',
             headerLeft: () => (
-                <TouchableOpacity 
-                    onPress={() => navigation.goBack()} 
+                <TouchableOpacity
+                    onPress={() => navigation.goBack()}
                     style={styles.headerButton}
                 >
                     <Icon name="arrow-back" size={24} color="#48755C" />
                 </TouchableOpacity>
             ),
             headerRight: () => (
-                <TouchableOpacity 
-                    onPress={() => navigation.navigate('AI')} 
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('AI')}
                     style={styles.headerButton}
                 >
                     <Icon name="add-circle-outline" size={24} color="#48755C" />
@@ -56,14 +58,14 @@ export default function SavedRecipesScreen({ navigation, route }) {
     useEffect(() => {
         if (route.params?.newRecipe) {
             setLoading(true);
-            
+
             // Add new recipe with a delay to show loading indicator
             setTimeout(() => {
                 setRecipes(prevRecipes => [...prevRecipes, route.params.newRecipe]);
                 setFilteredRecipes(prevRecipes => [...prevRecipes, route.params.newRecipe]);
                 setLoading(false);
             }, 300);
-            
+
             // Clear the params
             navigation.setParams({ newRecipe: null });
         }
@@ -72,23 +74,23 @@ export default function SavedRecipesScreen({ navigation, route }) {
     useEffect(() => {
         // Filter recipes based on search query and category
         let results = recipes;
-        
+
         if (searchQuery) {
-            results = results.filter(recipe => 
+            results = results.filter(recipe =>
                 recipe.title.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
-        
+
         if (selectedCategory !== 'All') {
-            results = results.filter(recipe => 
+            results = results.filter(recipe =>
                 recipe.category === selectedCategory
             );
         }
-        
+
         setFilteredRecipes(results);
     }, [searchQuery, selectedCategory, recipes]);
 
-    const handleRecipeSelect = (recipe) => {
+    const handleRecipeSelect = async (recipe) => {
         if (isSelectionMode) {
             // Return selected recipe to Calendar
             navigation.navigate('Calendar', { selectedRecipe: recipe });
@@ -99,18 +101,18 @@ export default function SavedRecipesScreen({ navigation, route }) {
     };
 
     const renderRecipeItem = ({ item }) => (
-        <TouchableOpacity 
-            onPress={() => handleRecipeSelect(item)} 
+        <TouchableOpacity
+            onPress={() => handleRecipeSelect(item)}
             style={styles.recipeItemContainer}
             activeOpacity={0.7}
         >
             <Image source={{ uri: item.image }} style={styles.recipeImage} />
-            
+
             {/* Meal type indicator */}
             <View style={styles.categoryTag}>
                 <Text style={styles.categoryText}>{item.category || 'Recipe'}</Text>
             </View>
-            
+
             <View style={styles.recipeDetails}>
                 <Text style={styles.recipeTitle} numberOfLines={2}>{item.title}</Text>
                 {item.time && (
@@ -120,9 +122,9 @@ export default function SavedRecipesScreen({ navigation, route }) {
                     </View>
                 )}
             </View>
-            
+
             {isSelectionMode && (
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.selectButton}
                     onPress={() => handleRecipeSelect(item)}
                 >
@@ -140,7 +142,7 @@ export default function SavedRecipesScreen({ navigation, route }) {
             ]}
             onPress={() => setSelectedCategory(item)}
         >
-            <Text 
+            <Text
                 style={[
                     styles.categoryButtonText,
                     selectedCategory === item && styles.categoryButtonTextActive
@@ -173,7 +175,7 @@ export default function SavedRecipesScreen({ navigation, route }) {
                         </TouchableOpacity>
                     )}
                 </View>
-                
+
                 {/* Category Filter */}
                 <FlatList
                     horizontal
@@ -184,7 +186,7 @@ export default function SavedRecipesScreen({ navigation, route }) {
                     style={styles.categoryList}
                     contentContainerStyle={styles.categoryListContent}
                 />
-                
+
                 {loading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color="#48755C" />
@@ -205,11 +207,11 @@ export default function SavedRecipesScreen({ navigation, route }) {
                         <Icon name="search-outline" size={60} color="#CCC" />
                         <Text style={styles.emptyTitle}>No recipes found</Text>
                         <Text style={styles.emptyText}>
-                            {searchQuery ? 
-                                "Try a different search term or category" : 
+                            {searchQuery ?
+                                "Try a different search term or category" :
                                 "Save some recipes to see them here"}
                         </Text>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.createButton}
                             onPress={() => navigation.navigate('AI')}
                         >

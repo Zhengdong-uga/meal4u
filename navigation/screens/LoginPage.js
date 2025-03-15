@@ -49,12 +49,12 @@ export default function LoginPage() {
         checkAppleAvailability();
     }, []);
 
-    const [request, response, promptAsync] = Google.useAuthRequest({ 
-            iosClientId: "809015044004-2qe0fbe9r14iebp0u2basjsgs5t9vcur.apps.googleusercontent.com",
-            webClientId: "809015044004-dsfp0lf7r2knti04sjaqg372ebaej6nc.apps.googleusercontent.com",
-            redirectUri: "https://meal4u-bc86f.firebaseapp.com/__/auth/handler",
-            useProxy: false,
-        });
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        iosClientId: "809015044004-2qe0fbe9r14iebp0u2basjsgs5t9vcur.apps.googleusercontent.com",
+        webClientId: "809015044004-dsfp0lf7r2knti04sjaqg372ebaej6nc.apps.googleusercontent.com",
+        redirectUri: "https://meal4u-bc86f.firebaseapp.com/__/auth/handler",
+        useProxy: false,
+    });
 
     useEffect(() => {
         async function handleGoogleResponse() {
@@ -76,6 +76,8 @@ export default function LoginPage() {
                         restrictions: [],
                         dislikes: [],
                         likes: [],
+                        savedRecipes: [],
+                        mealsImplemented: 0,
                     }, { merge: true });
 
                 } catch (error) {
@@ -112,7 +114,7 @@ export default function LoginPage() {
         setLoading(true);
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            
+
             // Create a basic user document - preferences will be set in onboarding
             await setDoc(doc(firestore, 'Users', userCredential.user.uid), {
                 name,
@@ -127,7 +129,7 @@ export default function LoginPage() {
             });
 
             Alert.alert('Sign Up Successful', 'Your account has been created!');
-            
+
         } catch (error) {
             Alert.alert('Sign Up Failed', error.message);
         } finally {
@@ -174,6 +176,7 @@ export default function LoginPage() {
                 restrictions: [],
                 dislikes: [],
                 likes: [],
+                savedRecipes: [],
             }, { merge: true });
 
         } catch (error) {
@@ -189,7 +192,7 @@ export default function LoginPage() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.keyboardAvoidingView}
             >
-                <ScrollView 
+                <ScrollView
                     contentContainerStyle={styles.scrollContainer}
                     showsVerticalScrollIndicator={false}
                 >
@@ -204,7 +207,7 @@ export default function LoginPage() {
 
                     <View style={styles.formContainer}>
                         <Text style={styles.formTitle}>{isSignUp ? 'Create Account' : 'Welcome Back'}</Text>
-                        
+
                         {isSignUp && (
                             <View style={styles.inputContainer}>
                                 <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
@@ -217,7 +220,7 @@ export default function LoginPage() {
                                 />
                             </View>
                         )}
-                        
+
                         <View style={styles.inputContainer}>
                             <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
                             <TextInput
@@ -230,7 +233,7 @@ export default function LoginPage() {
                                 placeholderTextColor="#999"
                             />
                         </View>
-                        
+
                         <View style={styles.inputContainer}>
                             <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
                             <TextInput
@@ -241,14 +244,14 @@ export default function LoginPage() {
                                 secureTextEntry={!showPassword}
                                 placeholderTextColor="#999"
                             />
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.passwordVisibilityButton}
                                 onPress={() => setShowPassword(!showPassword)}
                             >
-                                <Ionicons 
-                                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                                    size={20} 
-                                    color="#666" 
+                                <Ionicons
+                                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                                    size={20}
+                                    color="#666"
                                 />
                             </TouchableOpacity>
                         </View>
@@ -302,7 +305,7 @@ export default function LoginPage() {
                         </View>
                     </View>
 
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.toggleContainer}
                         onPress={() => setIsSignUp(!isSignUp)}
                     >
@@ -320,9 +323,9 @@ export default function LoginPage() {
 }
 
 const styles = StyleSheet.create({
-    container: { 
-        flex: 1, 
-        backgroundColor: '#FFFFFF' 
+    container: {
+        flex: 1,
+        backgroundColor: '#FFFFFF'
     },
     keyboardAvoidingView: {
         flex: 1,

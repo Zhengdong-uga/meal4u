@@ -34,9 +34,18 @@ const ask_gemini = async (goal, diet, restrictions, dislikes, likes, ingredients
                 difficulty: { type: "string" },
                 ingredients: { type: "array", items: { type: "string" } },
                 stepsOfPreparation: { type: "array", items: { type: "string" } },
-                nutritionalInformation: { type: "string" },
+                nutrition: {
+                    type: "object",
+                    properties: {
+                        calories: { type: "string" },
+                        protein: { type: "string" },
+                        fat: { type: "string" },
+                        carbohydrates: { type: "string" },
+                    },
+                    required: ["calories", "protein", "fat", "carbohydrates"]
+                },
             },
-            required: ["name", "ingredients", "stepsOfPreparation", "nutritionalInformation"],
+            required: ["name", "ingredients", "stepsOfPreparation", "nutrition", "time", "difficulty", "description"],
         }
     };
 

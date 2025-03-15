@@ -1,26 +1,28 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  FlatList, 
-  StyleSheet, 
-  Modal, 
-  ScrollView, 
-  Image, 
-  Alert, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  Modal,
+  ScrollView,
+  Image,
+  Alert,
   SafeAreaView,
   BackHandler
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { auth } from '../../backend/src/firebase';
+import { doc, getDoc, updateDoc, getFirestore } from 'firebase/firestore';
 
 export default function EnhancedCalendarScreen({ navigation, route }) {
   // Helper function to get the current date in YYYY-MM-DD format based on local time
   const getLocalDateString = (date = new Date()) => {
-    return date.getFullYear() + "-" + 
-          (date.getMonth() + 1).toString().padStart(2, "0") + "-" + 
-          date.getDate().toString().padStart(2, "0");
+    return date.getFullYear() + "-" +
+      (date.getMonth() + 1).toString().padStart(2, "0") + "-" +
+      date.getDate().toString().padStart(2, "0");
   };
 
   // All state declarations in one place
@@ -46,7 +48,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
           setMealsByDate(parsedData);
           updateMarkedDates(parsedData);
         }
-        
+
         // Set today as default selected date - USING LOCAL DATE STRING
         const today = getLocalDateString();
         setSelectedDate(today);
@@ -100,15 +102,15 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
   useEffect(() => {
     if ((route.params?.newRecipe || route.params?.selectedRecipe) && selectedDate && mealType) {
       const recipe = route.params.newRecipe || route.params.selectedRecipe;
-      
+
       setMealsByDate((prevMeals) => {
-        const dateMeals = prevMeals[selectedDate] || { 
-          breakfast: [], 
-          lunch: [], 
-          dinner: [], 
-          snacks: [] 
+        const dateMeals = prevMeals[selectedDate] || {
+          breakfast: [],
+          lunch: [],
+          dinner: [],
+          snacks: []
         };
-        
+
         return {
           ...prevMeals,
           [selectedDate]: {
@@ -125,16 +127,16 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
   // Update marked dates on calendar based on meal data
   const updateMarkedDates = (meals) => {
     const marked = {};
-    
+
     // Mark dates with meals
     Object.keys(meals).forEach(date => {
       const dateMeals = meals[date];
-      const hasMeals = 
-        (dateMeals.breakfast && dateMeals.breakfast.length > 0) || 
-        (dateMeals.lunch && dateMeals.lunch.length > 0) || 
-        (dateMeals.dinner && dateMeals.dinner.length > 0) || 
+      const hasMeals =
+        (dateMeals.breakfast && dateMeals.breakfast.length > 0) ||
+        (dateMeals.lunch && dateMeals.lunch.length > 0) ||
+        (dateMeals.dinner && dateMeals.dinner.length > 0) ||
         (dateMeals.snacks && dateMeals.snacks.length > 0);
-      
+
       // Only add a dot if it's not the selected date
       if (hasMeals && date !== selectedDate) {
         marked[date] = {
@@ -143,23 +145,23 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
         };
       }
     });
-    
+
     // Mark only the currently selected date with selection styling
     if (selectedDate) {
-      marked[selectedDate] = { 
-        selected: true, 
+      marked[selectedDate] = {
+        selected: true,
         selectedColor: '#48755C',
         selectedTextColor: '#FFFFFF',
         // Add a dot if the selected date has meals
-        ...(meals[selectedDate] && 
-          ((meals[selectedDate].breakfast && meals[selectedDate].breakfast.length > 0) || 
-          (meals[selectedDate].lunch && meals[selectedDate].lunch.length > 0) || 
-          (meals[selectedDate].dinner && meals[selectedDate].dinner.length > 0) || 
-          (meals[selectedDate].snacks && meals[selectedDate].snacks.length > 0)) 
+        ...(meals[selectedDate] &&
+          ((meals[selectedDate].breakfast && meals[selectedDate].breakfast.length > 0) ||
+            (meals[selectedDate].lunch && meals[selectedDate].lunch.length > 0) ||
+            (meals[selectedDate].dinner && meals[selectedDate].dinner.length > 0) ||
+            (meals[selectedDate].snacks && meals[selectedDate].snacks.length > 0))
           ? { marked: true, dotColor: '#FFFFFF' } : {})
       };
     }
-    
+
     setMarkedDates(marked);
   };
 
@@ -168,19 +170,40 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
     // If day is a date object, ensure we use the local date
     // Otherwise, use the dateString property (compatibility with calendar libraries)
     const dateString = day.dateString || getLocalDateString(day);
-    
+
     // Set the selected date
     setSelectedDate(dateString);
-    
+
     // Update marked dates
     updateMarkedDates(mealsByDate);
   }, [mealsByDate]);
 
-  const handleAddMeal = (type) => {
+  const handleAddMeal = async (type) => {
     setModalVisible(false);
+
+    try {
+
+      const user = auth.currentUser;
+      if (user) {
+        const firestore = getFirestore();
+        const userDocRef = doc(firestore, 'Users', user.uid);
+        try {
+          const userDoc = await getDoc(userDocRef);
+          await updateDoc(userDocRef, {
+            mealsImplemented: userDoc.data().mealsImplemented + 1,
+          })
+        } catch (error) {
+          console.error('Error updating user meal count:', error);
+        }
+      };
+    }
+    catch (error) {
+      console.error('Error updating user meal count:', error);
+    }
 
     if (type === 'saved') {
       navigation.navigate('SavedRecipes', { returnScreen: 'Calendar', mealType });
+
     } else if (type === 'new') {
       navigation.navigate('AI', { returnScreen: 'Calendar', mealType });
     }
@@ -201,12 +224,12 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
       "Are you sure you want to remove this meal?",
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
+        {
+          text: "Delete",
           style: "destructive",
           onPress: () => {
             setMealsByDate(prev => {
-              const updatedDateMeals = {...prev[selectedDate]};
+              const updatedDateMeals = { ...prev[selectedDate] };
               updatedDateMeals[mealTime].splice(index, 1);
               return { ...prev, [selectedDate]: updatedDateMeals };
             });
@@ -224,13 +247,13 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
       [{ text: "OK", onPress: () => console.log("OK Pressed") }]
     );
   };
-  
+
   // Function to get dates for current week - UPDATED FOR LOCAL DATE STRING
   const getWeekDates = () => {
     const dates = [];
     const day = new Date(currentWeek);
     day.setDate(day.getDate() - day.getDay()); // Start with Sunday
-    
+
     for (let i = 0; i < 7; i++) {
       const date = new Date(day);
       dates.push(getLocalDateString(date));
@@ -248,22 +271,22 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
 
   // Render meal section for a specific meal type
   const renderMealSection = (mealTitle, mealKey) => {
-    const meals = selectedDate && mealsByDate[selectedDate] && mealsByDate[selectedDate][mealKey] 
-        ? mealsByDate[selectedDate][mealKey] 
-        : [];
-    
+    const meals = selectedDate && mealsByDate[selectedDate] && mealsByDate[selectedDate][mealKey]
+      ? mealsByDate[selectedDate][mealKey]
+      : [];
+
     return (
       <View style={styles.mealTypeSection}>
         <View style={styles.mealHeaderRow}>
           <Text style={styles.mealTypeTitle}>{mealTitle}</Text>
-          <TouchableOpacity 
-            style={styles.addMealButton} 
+          <TouchableOpacity
+            style={styles.addMealButton}
             onPress={() => showAddMealModal(mealKey)}
           >
             <Ionicons name="add" size={24} color="#48755C" />
           </TouchableOpacity>
         </View>
-        
+
         {meals.length > 0 ? (
           <FlatList
             data={meals}
@@ -309,13 +332,13 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      
-      
+
+
       <View style={styles.calendarContainer}>
         {/* Week view */}
         <View style={styles.weekViewContainer}>
           <View style={styles.weekNavigation}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => {
                 const prevWeek = new Date(currentWeek);
                 prevWeek.setDate(prevWeek.getDate() - 7);
@@ -325,12 +348,12 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
             >
               <Ionicons name="chevron-back" size={24} color="#48755C" />
             </TouchableOpacity>
-            
+
             <Text style={styles.weekViewTitle}>
               {new Date(currentWeek.getTime() + 86400000 * 2).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </Text>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               onPress={() => {
                 const nextWeek = new Date(currentWeek);
                 nextWeek.setDate(nextWeek.getDate() + 7);
@@ -341,7 +364,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
               <Ionicons name="chevron-forward" size={24} color="#48755C" />
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.weekDaysContainer}>
             {getWeekDates().map((date, index) => {
               const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index];
@@ -355,10 +378,10 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
                 (mealsByDate[date].dinner && mealsByDate[date].dinner.length > 0) ||
                 (mealsByDate[date].snacks && mealsByDate[date].snacks.length > 0)
               );
-              
+
               return (
-                <TouchableOpacity 
-                  key={date} 
+                <TouchableOpacity
+                  key={date}
                   style={[
                     styles.weekDay,
                     isSelected && styles.selectedWeekDay,
@@ -367,13 +390,13 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
                   onPress={() => handleDayPress({ dateString: date })}
                 >
                   <Text style={[
-                    styles.weekDayName, 
+                    styles.weekDayName,
                     isSelected && styles.selectedWeekDayText
                   ]}>
                     {dayName}
                   </Text>
                   <Text style={[
-                    styles.weekDayNumber, 
+                    styles.weekDayNumber,
                     isSelected && styles.selectedWeekDayText
                   ]}>
                     {dayNumber}
@@ -398,7 +421,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
             <View style={styles.selectedDateIndicator} />
           )}
         </View>
-        
+
         {selectedDate ? (
           <>
             {renderMealSection('Breakfast', 'breakfast')}
@@ -422,24 +445,24 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
         statusBarTranslucent={true}
       >
         <SafeAreaView style={styles.modalContainer}>
-          
 
-          <ScrollView 
+
+          <ScrollView
             style={styles.modalScrollView}
             showsVerticalScrollIndicator={true}
             bounces={true}
           >
             <View style={styles.recipeCard}>
               {selectedRecipe?.image && (
-                <Image 
-                  source={{ uri: selectedRecipe.image }} 
+                <Image
+                  source={{ uri: selectedRecipe.image }}
                   style={styles.recipeImage}
                   resizeMode="cover"
                 />
               )}
-              
+
               <Text style={styles.recipeName}>{selectedRecipe?.name || 'Recipe'}</Text>
-              
+
               <View style={styles.recipeInfo}>
                 {selectedRecipe?.time && (
                   <View style={styles.infoItem}>
@@ -493,7 +516,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
                     ))}
                   </View>
                 )}
-                
+
                 {activeTab === 'instructions' && (
                   <View style={styles.instructionsContainer}>
                     {selectedRecipe?.instructions?.map((instruction, index) => (
@@ -506,7 +529,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
                     ))}
                   </View>
                 )}
-                
+
                 {activeTab === 'nutrition' && (
                   <View style={styles.nutritionContainer}>
                     {selectedRecipe?.nutrition ? (
@@ -524,9 +547,9 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
                   </View>
                 )}
               </View>
-              
+
               {/* Close button at the bottom */}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.closeButtonBottom}
                 onPress={() => setDetailsModalVisible(false)}
               >
@@ -547,25 +570,25 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
             <Text style={styles.modalText}>Add Recipe to {mealType.charAt(0).toUpperCase() + mealType.slice(1)}</Text>
-            
-            <TouchableOpacity 
-              style={styles.modalButton} 
+
+            <TouchableOpacity
+              style={styles.modalButton}
               onPress={() => handleAddMeal('saved')}
             >
               <Ionicons name="bookmark" size={24} color="#FFFFFF" />
               <Text style={styles.modalButtonText}>From Saved Recipes</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.modalButton} 
+
+            <TouchableOpacity
+              style={styles.modalButton}
               onPress={() => handleAddMeal('new')}
             >
               <Ionicons name="nutrition" size={24} color="#FFFFFF" />
               <Text style={styles.modalButtonText}>Generate New Recipe</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.modalButton, styles.cancelButton]} 
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.cancelButton]}
               onPress={() => setModalVisible(false)}
             >
               <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -578,9 +601,9 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: 'light grey' 
+  container: {
+    flex: 1,
+    backgroundColor: 'light grey'
   },
   loadingContainer: {
     flex: 1,
@@ -752,7 +775,7 @@ const styles = StyleSheet.create({
     color: '#664E2D',
     textAlign: 'center',
   },
-  
+
   // Modal styles
   modalContainer: {
     flex: 1,
@@ -922,7 +945,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
-  
+
   // Add Meal Modal
   centeredView: {
     flex: 1,

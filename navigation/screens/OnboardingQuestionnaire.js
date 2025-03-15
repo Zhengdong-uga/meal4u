@@ -49,19 +49,19 @@ export default function OnboardingQuestionnaire({ navigation, route }) {
       handleSavePreferences();
       return;
     }
-    
+
     // If we're on completion screen, finish the onboarding
     if (currentStep === 4) {
       finishOnboarding();
       return;
     }
-    
+
     // Validate current step if needed
     if (currentStep === 0 && preferences.eatingGoals.length === 0) {
       Alert.alert("Selection Required", "Please select at least one eating goal to continue.");
       return;
     }
-    
+
     if (currentStep < totalSteps - 1) {
       setCurrentStep(currentStep + 1);
     }
@@ -76,17 +76,17 @@ export default function OnboardingQuestionnaire({ navigation, route }) {
   const handleSavePreferences = async () => {
     const auth = getAuth(firebaseApp);
     const user = auth.currentUser;
-    
+
     if (!user) {
       Alert.alert("Error", "You must be logged in to complete onboarding.");
       navigation.replace('Login');
       return;
     }
-    
+
     // Save preferences to Firestore
     const firestore = getFirestore(firebaseApp);
     const userDocRef = doc(firestore, 'Users', user.uid);
-    
+
     try {
       await setDoc(userDocRef, {
         goal: preferences.eatingGoals,
@@ -96,12 +96,14 @@ export default function OnboardingQuestionnaire({ navigation, route }) {
         likes: preferences.likes,
         // Set this flag to indicate onboarding is complete
         onboardingComplete: true,
+        savedRecipes: [],
+        mealsImplemented: 0,
       }, { merge: true });
-      
+
       setPreferenceSaved(true);
       // Move to the completion screen
       setCurrentStep(4);
-      
+
     } catch (error) {
       console.error('Error saving preferences:', error);
       Alert.alert("Error", "There was a problem saving your preferences. Please try again.");
@@ -140,13 +142,13 @@ export default function OnboardingQuestionnaire({ navigation, route }) {
       <View style={styles.completionIconContainer}>
         <Ionicons name="checkmark-circle" size={100} color="#48755C" />
       </View>
-      
+
       <Text style={styles.completionTitle}>All Set!</Text>
-      
+
       <Text style={styles.completionDescription}>
         Your meal preferences have been saved successfully.
       </Text>
-      
+
       <View style={styles.infoCard}>
         <View style={styles.infoCardIconContainer}>
           <Ionicons name="information-circle" size={24} color="#48755C" />
@@ -158,14 +160,14 @@ export default function OnboardingQuestionnaire({ navigation, route }) {
 
       <View style={styles.preferenceSummary}>
         <Text style={styles.summaryTitle}>Your Preferences</Text>
-        
+
         {preferences.eatingGoals.length > 0 && (
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Goals:</Text>
             <Text style={styles.summaryValue}>{preferences.eatingGoals.join(', ')}</Text>
           </View>
         )}
-        
+
         {preferences.dietTypes.length > 0 && (
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Diet Type:</Text>
@@ -180,32 +182,32 @@ export default function OnboardingQuestionnaire({ navigation, route }) {
     switch (currentStep) {
       case 0:
         return (
-          <GoalsStep 
+          <GoalsStep
             selectedGoals={preferences.eatingGoals}
-            onSelectGoals={(goals) => setPreferences({...preferences, eatingGoals: goals})}
+            onSelectGoals={(goals) => setPreferences({ ...preferences, eatingGoals: goals })}
           />
         );
       case 1:
         return (
-          <DietTypeStep 
+          <DietTypeStep
             selectedDietTypes={preferences.dietTypes}
-            onSelectDietTypes={(dietTypes) => setPreferences({...preferences, dietTypes: dietTypes})}
+            onSelectDietTypes={(dietTypes) => setPreferences({ ...preferences, dietTypes: dietTypes })}
           />
         );
       case 2:
         return (
           <RestrictionsStep
             selectedRestrictions={preferences.restrictions}
-            onSelectRestrictions={(restrictions) => setPreferences({...preferences, restrictions: restrictions})}
+            onSelectRestrictions={(restrictions) => setPreferences({ ...preferences, restrictions: restrictions })}
           />
         );
       case 3:
         return (
           <DislikesStep
             dislikes={preferences.dislikes}
-            onUpdateDislikes={(dislikes) => setPreferences({...preferences, dislikes: dislikes})}
+            onUpdateDislikes={(dislikes) => setPreferences({ ...preferences, dislikes: dislikes })}
             likes={preferences.likes}
-            onUpdateLikes={(likes) => setPreferences({...preferences, likes: likes})}
+            onUpdateLikes={(likes) => setPreferences({ ...preferences, likes: likes })}
           />
         );
       case 4:
@@ -218,7 +220,7 @@ export default function OnboardingQuestionnaire({ navigation, route }) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      
+
       {/* Title in progress container instead of separate header */}
       <View style={styles.progressContainer}>
         <Text style={styles.stepTitle}>{getStepTitle()}</Text>
@@ -226,7 +228,7 @@ export default function OnboardingQuestionnaire({ navigation, route }) {
           {STEP_LABELS.map((label, index) => (
             <View key={index} style={styles.stepLabelWrapper}>
               <View style={[
-                styles.stepCircle, 
+                styles.stepCircle,
                 currentStep >= index ? styles.activeStepCircle : {}
               ]}>
                 {currentStep > index ? (
@@ -249,14 +251,14 @@ export default function OnboardingQuestionnaire({ navigation, route }) {
             </View>
           ))}
         </View>
-        
+
         <View style={styles.progressBarContainer}>
           <View style={styles.progressBarBackground}>
-            <View 
+            <View
               style={[
-                styles.progressBarFill, 
+                styles.progressBarFill,
                 { width: `${progressPercentage}%` }
-              ]} 
+              ]}
             />
           </View>
         </View>
@@ -274,8 +276,8 @@ export default function OnboardingQuestionnaire({ navigation, route }) {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity 
-          style={[styles.nextButton, currentStep === 4 ? styles.finishButton : {}]} 
+        <TouchableOpacity
+          style={[styles.nextButton, currentStep === 4 ? styles.finishButton : {}]}
           onPress={handleNext}
         >
           <Text style={styles.nextButtonText}>
