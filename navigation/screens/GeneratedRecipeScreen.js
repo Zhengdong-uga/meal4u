@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { doc, getDoc, updateDoc, getFirestore } from 'firebase/firestore';
 import { auth } from '../../backend/src/firebase';
@@ -7,6 +7,10 @@ import { auth } from '../../backend/src/firebase';
 export default function GeneratedRecipeScreen({ route, navigation }) {
   const { recipe } = route.params;
   const [activeTab, setActiveTab] = useState('details');
+  
+  // For responsive design
+  const screenWidth = Dimensions.get('window').width;
+  const isSmallScreen = screenWidth < 375;
 
   const saveRecipeToFirebase = async (recipe) => {
     const user = auth.currentUser;
@@ -52,8 +56,14 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
   };
 
   const handleBackButton = () => {
-    // Navigate back to the main tabs and then to the AI tab
-    navigation.navigate('Main', { screen: 'Meal Generating' });
+    if (route.params?.fromScreen === 'SavedRecipes') {
+      navigation.navigate('SavedRecipes');
+    } else if (route.params?.fromScreen === 'Profile') {
+      navigation.navigate('Profile');
+    } else {
+      // Default to AI screen if no specific source is specified
+      navigation.navigate('Main', { screen: 'Meal Generating' });
+    }
   };
 
   return (
@@ -79,19 +89,25 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
             style={[styles.tabButton, activeTab === 'details' && styles.activeTab]}
             onPress={() => setActiveTab('details')}
           >
-            <Text style={styles.tabText}>Ingredients</Text>
+            <Text style={[styles.tabText, activeTab === 'details' && styles.activeTabText]}>
+              {isSmallScreen ? 'Ingred.' : 'Ingredients'}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 'instructions' && styles.activeTab]}
             onPress={() => setActiveTab('instructions')}
           >
-            <Text style={styles.tabText}>Instructions</Text>
+            <Text style={[styles.tabText, activeTab === 'instructions' && styles.activeTabText]}>
+              {isSmallScreen ? 'Steps' : 'Steps'}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 'nutrition' && styles.activeTab]}
             onPress={() => setActiveTab('nutrition')}
           >
-            <Text style={styles.tabText}>Nutrition</Text>
+            <Text style={[styles.tabText, activeTab === 'nutrition' && styles.activeTabText]}>
+              Nutrition
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -149,8 +165,17 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#FBF0E9' },
-  backButton: { position: 'absolute', top: 30, left: 20, zIndex: 1 },
+  container: { 
+    flex: 1, 
+    padding: 20, 
+    backgroundColor: '#FBF0E9' 
+  },
+  backButton: { 
+    position: 'absolute', 
+    top: 30, 
+    left: 20, 
+    zIndex: 1 
+  },
   recipeCard: {
     padding: 30,
     borderRadius: 15,
@@ -159,25 +184,83 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#664E2D',
   },
-  recipeName: { fontSize: 24, fontWeight: 'bold', marginBottom: 10, textAlign: 'left', color: '#664E2D' },
-  recipeInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  recipeName: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    marginBottom: 10, 
+    textAlign: 'left', 
+    color: '#664E2D' 
+  },
+  recipeInfo: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    marginBottom: 20 
+  },
+  // Updated tab styles to match CalendarScreen
   tabContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-    backgroundColor: '#F4F4F4',
+    backgroundColor: '#F0F0F0',
     borderRadius: 10,
+    marginBottom: 15,
+    marginRight: 2,
+    padding: 2,
   },
-  tabButton: { flex: 1, padding: 12, alignItems: 'center', borderRadius: 12 },
-  activeTab: { backgroundColor: '#E4E4E4' },
-  tabText: { fontWeight: 'bold', color: '#664E2D' },
-  detailsOrInstructions: { maxHeight: 300, marginBottom: 20 },
-  sectionTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 10, color: '#231F20' },
-  ingredientItem: { fontSize: 18, marginBottom: 5 },
-  instructionItem: { fontSize: 18, marginBottom: 10 },
-  actions: { flexDirection: 'row', justifyContent: 'space-between' },
-  saveButton: { padding: 20, backgroundColor: '#F0DED0', borderRadius: 8, flex: 1, marginRight: 20 },
-  addToPlanButton: { padding: 20, backgroundColor: '#48755C', borderRadius: 8, flex: 1 },
+  tabButton: { 
+    flex: 1, 
+    padding: 12, 
+    alignItems: 'center', 
+    borderRadius: 10,
+    minWidth: 40,
+  },
+  activeTab: { 
+    backgroundColor: '#B8CCBA',  // Using the color from CalendarScreen
+  },
+  tabText: { 
+    fontWeight: '500', 
+    color: '#664E2D',
+    fontSize: 12,
+    textAlign: 'center',
+    flexShrink: 1,
+  },
+  activeTabText: {
+    fontWeight: 'bold',
+    color: '#48755C',
+  },
+  detailsOrInstructions: { 
+    maxHeight: 300, 
+    marginBottom: 20 
+  },
+  sectionTitle: { 
+    fontSize: 22, 
+    fontWeight: 'bold', 
+    marginBottom: 10, 
+    color: '#231F20' 
+  },
+  ingredientItem: { 
+    fontSize: 18, 
+    marginBottom: 5 
+  },
+  instructionItem: { 
+    fontSize: 18, 
+    marginBottom: 10 
+  },
+  actions: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between' 
+  },
+  saveButton: { 
+    padding: 20, 
+    backgroundColor: '#F0DED0', 
+    borderRadius: 8, 
+    flex: 1, 
+    marginRight: 20 
+  },
+  addToPlanButton: { 
+    padding: 20, 
+    backgroundColor: '#48755C', 
+    borderRadius: 8, 
+    flex: 1 
+  },
   buttonText: {
     textAlign: 'center',
     fontWeight: 'bold',
@@ -189,7 +272,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#664E2D', // Original brown text for "Save Recipe"
   },
-  // New styles for nutrition tab
+  // Nutrition tab styles
   nutritionContainer: {
     marginTop: 5,
   },

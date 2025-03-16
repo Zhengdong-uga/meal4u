@@ -180,9 +180,8 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
 
   const handleAddMeal = async (type) => {
     setModalVisible(false);
-
+  
     try {
-
       const user = auth.currentUser;
       if (user) {
         const firestore = getFirestore();
@@ -200,12 +199,12 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
     catch (error) {
       console.error('Error updating user meal count:', error);
     }
-
+  
     if (type === 'saved') {
       navigation.navigate('SavedRecipes', { returnScreen: 'Calendar', mealType });
-
     } else if (type === 'new') {
-      navigation.navigate('AI', { returnScreen: 'Calendar', mealType });
+      // Updated this line to navigate to 'Meal Generating' instead of 'AI'
+      navigation.navigate('Meal Generating', { returnScreen: 'Calendar', mealType });
     }
   };
 
@@ -650,10 +649,12 @@ const styles = StyleSheet.create({
   weekDay: {
     flex: 1,
     alignItems: 'center',
-    padding: 12,
+    padding: 8, // Reduced from 12
     borderRadius: 10,
-    margin: 2,
+    margin: 1, // Reduced from 2
+    minWidth: 40, // Ensure minimum width
   },
+  
   selectedWeekDay: {
     backgroundColor: '#48755C',
   },
@@ -666,6 +667,9 @@ const styles = StyleSheet.create({
     color: '#664E2D',
     marginBottom: 5,
     fontWeight: '500',
+    flexShrink: 1,
+    width: '100%',
+    textAlign: 'center',
   },
   weekDayNumber: {
     fontSize: 18,

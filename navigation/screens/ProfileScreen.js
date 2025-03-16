@@ -17,23 +17,26 @@ import {
     Dimensions
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-// import { savedRecipes } from '../../data/savedRecipeData.js';
 import { getAuth, signOut, onAuthStateChanged } from 'firebase/auth';
-import { auth, firestore } from '../../backend/src/firebase';
+import { auth } from '../../backend/src/firebase'; // Remove firestore import from here
 import { doc, getDoc, setDoc, updateDoc, getFirestore } from 'firebase/firestore';
+// Import the saved recipes mockup data for Recipe Gallery
+import { savedRecipes as mockSavedRecipes } from '../../data/savedRecipeData.js';
 
 const { height } = Dimensions.get('window');
 
+// Get a consistent Firestore instance
+const firestore = getFirestore();
+
 export default function ProfileScreen({ navigation }) {
-    // Add state to track whether to show all recipes in expanded view
-    const [showAllRecipes, setShowAllRecipes] = useState(false);
+    // No longer need state for showing all recipes since we always show just 2
     const [modalVisible, setModalVisible] = useState(false);
     const [avatarModalVisible, setAvatarModalVisible] = useState(false);
     const [userEmail, setUserEmail] = useState('');
     const [userFirstName, setUserFirstName] = useState('');
     const [userAvatar, setUserAvatar] = useState(null);
     const [userId, setUserId] = useState('');
-    const [savedRecipes, setSavedRecipes] = useState([]);
+    // We'll use mockup data for recipes display
     const [mealsGeneratedScore, setMealsGeneratedScore] = useState(0);
     const [mealsImplementedScore, setMealsImplementedScore] = useState(0);
 
@@ -111,27 +114,34 @@ export default function ProfileScreen({ navigation }) {
         { id: 6, name: 'Paleo', source: require('../../assets/avatar.png') },
     ];
 
-    const fetchSavedRecipes = async () => {
+    // This function only fetches the user stats, not the recipes
+    const fetchUserStats = async () => {
         try {
             const user = auth.currentUser;
             if (user) {
-                const firestore = getFirestore();
                 const userDocRef = doc(firestore, 'Users', user.uid);
 
                 try {
                     const userDoc = await getDoc(userDocRef); // Fetch the user document
                     if (userDoc.exists()) {
-                        setSavedRecipes(userDoc.data().savedRecipes);
-                        setMealsGeneratedScore(savedRecipes.length);
-                        setMealsImplementedScore(userDoc.data().mealsImplemented);
+                        const userData = userDoc.data();
+                        // Set stats from user data in Firestore
+                        setMealsGeneratedScore(userData.savedRecipes ? userData.savedRecipes.length : 0);
+                        setMealsImplementedScore(userData.mealsImplemented || 0);
                     } else {
                         console.log("User document does not exist");
+                        // Reset stats if no user document exists
+                        setMealsGeneratedScore(0);
+                        setMealsImplementedScore(0);
                     }
                 } catch (error) {
                     console.error('Error fetching user document:', error);
                 }
             } else {
                 console.log("No user is currently authenticated");
+                // Reset stats if no user is authenticated
+                setMealsGeneratedScore(0);
+                setMealsImplementedScore(0);
             }
         } catch (error) {
             console.error('Error fetching user from Firebase Auth:', error);
@@ -139,8 +149,16 @@ export default function ProfileScreen({ navigation }) {
     };
 
     useEffect(() => {
-        fetchSavedRecipes();
-    })
+        // Fetch user stats when component mounts
+        fetchUserStats();
+        
+        // Also fetch stats when navigation focus changes
+        const unsubscribeFocus = navigation.addListener('focus', () => {
+            fetchUserStats();
+        });
+        
+        return unsubscribeFocus;
+    }, [navigation]);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -276,24 +294,13 @@ export default function ProfileScreen({ navigation }) {
                 </View>
 
                 <View style={styles.recipeSection}>
-                    <TouchableOpacity
-                        style={styles.recipeTitleRow}
-                        onPress={() => setShowAllRecipes(!showAllRecipes)}
-                    >
-                        <Text style={styles.sectionTitle}>Saved Recipes</Text>
-                        <View style={styles.viewAllContainer}>
-                            <Text style={styles.seeAllText}>View All</Text>
-                            <Icon
-                                name={showAllRecipes ? "chevron-down" : "chevron-forward"}
-                                size={16}
-                                color="#48755C"
-                            />
-                        </View>
-                    </TouchableOpacity>
+                    <View style={styles.recipeTitleRow}>
+                        <Text style={styles.sectionTitle}>Recipe Gallery</Text>
+                    </View>
 
-                    {savedRecipes.length > 0 ? (
+                    {mockSavedRecipes.length > 0 ? (
                         <FlatList
-                            data={showAllRecipes ? savedRecipes : savedRecipes.slice(0, 2)}
+                            data={mockSavedRecipes.slice(0, 2)}
                             renderItem={renderRecipeItem}
                             keyExtractor={(item) => item.id}
                             numColumns={2}
@@ -315,13 +322,13 @@ export default function ProfileScreen({ navigation }) {
 
                     <TouchableOpacity
                         style={styles.browseAllButton}
-                        onPress={() => navigation.navigate('SavedRecipes')}
+                        onPress={() => navigation.navigate('SavedRecipes', { fromScreen: 'Profile' })}
                     >
                         <Text style={styles.browseAllText}>Browse All Recipes</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* Updated Account Management Modal */}
+                {/* Account Management Modal */}
                 <Modal
                     animationType="none"
                     transparent={true}
@@ -390,7 +397,7 @@ export default function ProfileScreen({ navigation }) {
                     </View>
                 </Modal>
 
-                {/* Updated Avatar Selection Modal */}
+                {/* Avatar Selection Modal */}
                 <Modal
                     animationType="none"
                     transparent={true}
@@ -542,7 +549,7 @@ const styles = StyleSheet.create({
     },
     recipeTitleRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start',
         alignItems: 'center',
         marginBottom: 16,
     },
@@ -617,7 +624,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         padding: 14,
         alignItems: 'center',
-        marginTop: 10,
+        marginTop: 16,
     },
     browseAllText: {
         color: '#48755C',
@@ -625,7 +632,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
 
-    // Updated Modal Styles
+    // Modal Styles
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
