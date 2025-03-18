@@ -97,6 +97,7 @@ export default function OnboardingQuestionnaire({ navigation, route }) {
         // Set this flag to indicate onboarding is complete
         onboardingComplete: true,
         savedRecipes: [],
+        mealsGenerated: 0,
         mealsImplemented: 0,
       }, { merge: true });
 

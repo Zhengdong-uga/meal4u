@@ -77,6 +77,7 @@ export default function LoginPage() {
                         dislikes: [],
                         likes: [],
                         savedRecipes: [],
+                        mealsGenerated: 0,
                         mealsImplemented: 0,
                     }, { merge: true });
 
