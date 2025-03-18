@@ -355,10 +355,10 @@ export default function AIScreen({ navigation }) {
 
                                 {ingredients.length > 0 && (
                                     <View style={styles.ingredientsContainer}>
-                                        <FlatList
-                                            data={ingredients}
-                                            renderItem={({ item }) => (
+                                        <View style={styles.ingredientsGrid}>
+                                            {ingredients.map((item, index) => (
                                                 <TouchableOpacity
+                                                    key={index.toString()}
                                                     style={styles.ingredient}
                                                     onPress={() => handleRemoveIngredient(item)}
                                                     activeOpacity={0.7}
@@ -366,12 +366,8 @@ export default function AIScreen({ navigation }) {
                                                     <Text style={styles.ingredientText}>{item}</Text>
                                                     <Ionicons name="close-circle" size={16} color="#48755C" />
                                                 </TouchableOpacity>
-                                            )}
-                                            keyExtractor={(item, index) => index.toString()}
-                                            horizontal={false}
-                                            numColumns={2}
-                                            columnWrapperStyle={styles.ingredientsRow}
-                                        />
+                                            ))}
+                                        </View>
                                     </View>
                                 )}
                             </View>
@@ -741,6 +737,10 @@ const styles = StyleSheet.create({
     },
     ingredientsRow: {
         justifyContent: 'flex-start',
+    },
+    ingredientsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
     },
     ingredient: {
         flexDirection: 'row',
