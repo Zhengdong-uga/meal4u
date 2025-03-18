@@ -19,7 +19,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import dayjs from 'dayjs';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../../backend/src/firebase';
-import { doc, getDoc, getFirestore } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, getFirestore } from 'firebase/firestore';
 import { ask_gemini } from '../../backend/api.js';
 import LottieView from 'lottie-react-native';
 
@@ -272,6 +272,20 @@ export default function AIScreen({ navigation }) {
                 instructions: result.stepsOfPreparation,
                 nutrition: result.nutrition,
                 notes: ['Generated with AI based on your preferences.'],
+            };
+
+            const user = auth.currentUser;
+            if (user) {
+                const firestore = getFirestore();
+                const userDocRef = doc(firestore, 'Users', user.uid);
+                try {
+                    const userDoc = await getDoc(userDocRef);
+                    await updateDoc(userDocRef, {
+                        mealsGenerated: userDoc.data().mealsGenerated + 1,
+                    })
+                } catch (error) {
+                    console.error('Error updating user meal count:', error);
+                }
             };
 
             navigation.navigate('GeneratedRecipe', { recipe: generatedRecipe });

@@ -7,7 +7,7 @@ import { auth } from '../../backend/src/firebase';
 export default function GeneratedRecipeScreen({ route, navigation }) {
   const { recipe } = route.params;
   const [activeTab, setActiveTab] = useState('details');
-  
+
   // For responsive design
   const screenWidth = Dimensions.get('window').width;
   const isSmallScreen = screenWidth < 375;
@@ -51,7 +51,27 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
     }
   };
 
-  const handleAddToPlan = () => {
+  const handleAddToPlan = async () => {
+
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        const firestore = getFirestore();
+        const userDocRef = doc(firestore, 'Users', user.uid);
+        try {
+          const userDoc = await getDoc(userDocRef);
+          await updateDoc(userDocRef, {
+            mealsImplemented: userDoc.data().mealsImplemented + 1,
+          })
+        } catch (error) {
+          console.error('Error updating user meal count:', error);
+        }
+      };
+    }
+    catch (error) {
+      console.error('Error updating user meal count:', error);
+    }
+
     navigation.navigate('Calendar', { newRecipe: recipe });
   };
 
@@ -165,16 +185,16 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    padding: 20, 
-    backgroundColor: '#FBF0E9' 
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#FBF0E9'
   },
-  backButton: { 
-    position: 'absolute', 
-    top: 30, 
-    left: 20, 
-    zIndex: 1 
+  backButton: {
+    position: 'absolute',
+    top: 30,
+    left: 20,
+    zIndex: 1
   },
   recipeCard: {
     padding: 30,
@@ -184,17 +204,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#664E2D',
   },
-  recipeName: { 
-    fontSize: 24, 
-    fontWeight: 'bold', 
-    marginBottom: 10, 
-    textAlign: 'left', 
-    color: '#664E2D' 
+  recipeName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'left',
+    color: '#664E2D'
   },
-  recipeInfo: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    marginBottom: 20 
+  recipeInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20
   },
   // Updated tab styles to match CalendarScreen
   tabContainer: {
@@ -205,18 +225,18 @@ const styles = StyleSheet.create({
     marginRight: 2,
     padding: 2,
   },
-  tabButton: { 
-    flex: 1, 
-    padding: 12, 
-    alignItems: 'center', 
+  tabButton: {
+    flex: 1,
+    padding: 12,
+    alignItems: 'center',
     borderRadius: 10,
     minWidth: 40,
   },
-  activeTab: { 
+  activeTab: {
     backgroundColor: '#B8CCBA',  // Using the color from CalendarScreen
   },
-  tabText: { 
-    fontWeight: '500', 
+  tabText: {
+    fontWeight: '500',
     color: '#664E2D',
     fontSize: 12,
     textAlign: 'center',
@@ -226,40 +246,40 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#48755C',
   },
-  detailsOrInstructions: { 
-    maxHeight: 300, 
-    marginBottom: 20 
+  detailsOrInstructions: {
+    maxHeight: 300,
+    marginBottom: 20
   },
-  sectionTitle: { 
-    fontSize: 22, 
-    fontWeight: 'bold', 
-    marginBottom: 10, 
-    color: '#231F20' 
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#231F20'
   },
-  ingredientItem: { 
-    fontSize: 18, 
-    marginBottom: 5 
+  ingredientItem: {
+    fontSize: 18,
+    marginBottom: 5
   },
-  instructionItem: { 
-    fontSize: 18, 
-    marginBottom: 10 
+  instructionItem: {
+    fontSize: 18,
+    marginBottom: 10
   },
-  actions: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between' 
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between'
   },
-  saveButton: { 
-    padding: 20, 
-    backgroundColor: '#F0DED0', 
-    borderRadius: 8, 
-    flex: 1, 
-    marginRight: 20 
+  saveButton: {
+    padding: 20,
+    backgroundColor: '#F0DED0',
+    borderRadius: 8,
+    flex: 1,
+    marginRight: 20
   },
-  addToPlanButton: { 
-    padding: 20, 
-    backgroundColor: '#48755C', 
-    borderRadius: 8, 
-    flex: 1 
+  addToPlanButton: {
+    padding: 20,
+    backgroundColor: '#48755C',
+    borderRadius: 8,
+    flex: 1
   },
   buttonText: {
     textAlign: 'center',

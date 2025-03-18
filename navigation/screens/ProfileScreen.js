@@ -126,7 +126,7 @@ export default function ProfileScreen({ navigation }) {
                     if (userDoc.exists()) {
                         const userData = userDoc.data();
                         // Set stats from user data in Firestore
-                        setMealsGeneratedScore(userData.savedRecipes ? userData.savedRecipes.length : 0);
+                        setMealsGeneratedScore(userData.mealsGenerated || 0);
                         setMealsImplementedScore(userData.mealsImplemented || 0);
                     } else {
                         console.log("User document does not exist");
@@ -151,12 +151,12 @@ export default function ProfileScreen({ navigation }) {
     useEffect(() => {
         // Fetch user stats when component mounts
         fetchUserStats();
-        
+
         // Also fetch stats when navigation focus changes
         const unsubscribeFocus = navigation.addListener('focus', () => {
             fetchUserStats();
         });
-        
+
         return unsubscribeFocus;
     }, [navigation]);
 

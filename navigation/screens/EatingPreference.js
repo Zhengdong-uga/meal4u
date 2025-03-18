@@ -26,7 +26,7 @@ export default function EatingPreference({ navigation }) {
   const [isDietTypesModalVisible, setDietTypesModalVisible] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
 
-  
+
 
   useEffect(() => {
     loadUserPreferences();
@@ -63,7 +63,7 @@ export default function EatingPreference({ navigation }) {
       try {
         const sanitizedGoals = preferences.eatingGoals.filter((goal) => typeof goal === 'string');
         const sanitizedDietTypes = preferences.dietTypes.filter((type) => typeof type === 'string');
-  
+
         await updateDoc(userDocRef, {
           goal: sanitizedGoals,
           diet: sanitizedDietTypes,
@@ -71,10 +71,10 @@ export default function EatingPreference({ navigation }) {
           dislikes: preferences.dislikes,
           likes: preferences.likes,
         });
-  
+
         // Show success notification
         setSuccessModalVisible(true);
-  
+
         // Navigate to Profile after a delay
         setTimeout(() => {
           setSuccessModalVisible(false);
@@ -85,7 +85,7 @@ export default function EatingPreference({ navigation }) {
       }
     }
   };
-  
+
 
 
   const PreferenceItemWithInput = ({ title, values, setValues }) => {
@@ -456,5 +456,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#48755C',
   },
-  
+
 });
