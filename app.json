@@ -6,27 +6,28 @@
     "newArchEnabled": true,
     "version": "1.0.0",
     "orientation": "portrait",
-    "platforms": [
-      "ios"
-    ],
+    "platforms": ["ios", "android", "web"],
+    "icon": "./assets/icon.png",
     "ios": {
       "bundleIdentifier": "com.persimmoners.meal4u",
       "supportsTablet": true,
       "infoPlist": {
         "CFBundleURLTypes": [
           {
-            "CFBundleURLSchemes": [
-              "meal4u"
-            ]
+            "CFBundleURLSchemes": ["meal4u"]
           }
         ]
       }
     },
+    "android": {
+      "package": "com.persimmoners.meal4u",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "android": {
-      "package": "com.persimmoners.meal4u"
     },
     "extra": {
       "eas": {
