@@ -7,7 +7,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "platforms": ["ios", "android", "web"],
-    "icon": "./assets/icon.png",
+    "icon": "../../assets/icon.png",
     "ios": {
       "bundleIdentifier": "com.persimmoners.meal4u",
       "supportsTablet": true,
