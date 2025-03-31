@@ -25,6 +25,8 @@ import {
 import { getFirestore, doc, setDoc } from 'firebase/firestore';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
 import { firebaseApp } from '../../backend/src/firebase';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -50,11 +52,13 @@ export default function LoginPage() {
     }, []);
 
     const [request, response, promptAsync] = Google.useAuthRequest({
-        iosClientId: "809015044004-2qe0fbe9r14iebp0u2basjsgs5t9vcur.apps.googleusercontent.com",
-        webClientId: "809015044004-dsfp0lf7r2knti04sjaqg372ebaej6nc.apps.googleusercontent.com",
-        redirectUri: "https://meal4u-bc86f.firebaseapp.com/__/auth/handler",
+      iosClientId: '809015044004-2qe0fbe9r14iebp0u2basjsgs5t9vcur.apps.googleusercontent.com',
+      webClientId: '809015044004-dsfp0lf7r2knti04sjaqg372ebaej6nc.apps.googleusercontent.com',
+      redirectUri: makeRedirectUri({
+        native: 'com.persimmoners.meal4u:/oauthredirect',
         useProxy: false,
-    });
+      }),
+    });    
 
     useEffect(() => {
         async function handleGoogleResponse() {
