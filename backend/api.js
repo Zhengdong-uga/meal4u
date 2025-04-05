@@ -12,7 +12,9 @@ const ask_gemini = async (goal, diet, restrictions, dislikes, likes, ingredients
 
     let prompt = prompting.generatePrompt(goal, diet, restrictions, dislikes, likes, ingredients, suggestions, specialrequest, mealtype, preparetime, dishtype);
 
-    const genAI = new GoogleGenerativeAI("AIzaSyDzU09ssDnIhzz3Yq21j7she_QERLIOp4A");
+    const apikeys = require('../apikeys.json');
+
+    const genAI = new GoogleGenerativeAI(apikeys.geminikey);
 
     const model = genAI.getGenerativeModel({
         model: "gemini-1.5-pro",

@@ -1,8 +1,8 @@
 // // Firebase configuration
 import { initializeApp } from 'firebase/app';
-import { 
-    getAuth, 
-    initializeAuth, 
+import {
+    getAuth,
+    initializeAuth,
     getReactNativePersistence,
     GoogleAuthProvider,
     OAuthProvider,
@@ -13,16 +13,9 @@ import * as Google from 'expo-auth-session/providers/google';
 import * as AppleAuthentication from 'expo-apple-authentication';
 
 // Firebase 
-const firebaseConfig = {
-    apiKey: "AIzaSyA9BYzT4z6d97fEays0nAxT2emRTEhQvbE",
-    authDomain: "meal4u-bc86f.firebaseapp.com",
-    projectId: "meal4u-bc86f",
-    storageBucket: "meal4u-bc86f.firebasestorage.app",
-    messagingSenderId: "809015044004",
-    appId: "1:809015044004:web:78a52d030ee36f4026c331",
-    measurementId: "G-NJYPH5NDEC" 
+const apikeys = require('../../apikeys.json');
 
-};
+const firebaseConfig = apikeys['firebase-api'];
 
 //  Firebase
 const app = initializeApp(firebaseConfig);
@@ -31,13 +24,13 @@ const auth = initializeAuth(app, {
 });
 
 // ✅ use Expo `expo-auth-session`for google
-        const signInWithGoogle = async () => {
-            const [request, response, promptAsync] = Google.useAuthRequest({
-                expoClientId: "809015044004-ahif2mhgnfp0lj59vh86io0rr2ap44ej.apps.googleusercontent.com",
-                iosClientId: "809015044004-qfbe8o9qeq6adbdldsd7j.apps.googleusercontent.com", 
-                androidClientId: "809015044004-xxxxxxxxxxxxxxx.apps.googleusercontent.com", 
-                webClientId: "809015044004-ahif2mhgnfp0lj59vh86io0rr2ap44ej.apps.googleusercontent.com", 
-            });
+const signInWithGoogle = async () => {
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        expoClientId: "809015044004-ahif2mhgnfp0lj59vh86io0rr2ap44ej.apps.googleusercontent.com",
+        iosClientId: "809015044004-qfbe8o9qeq6adbdldsd7j.apps.googleusercontent.com",
+        androidClientId: "809015044004-xxxxxxxxxxxxxxx.apps.googleusercontent.com",
+        webClientId: "809015044004-ahif2mhgnfp0lj59vh86io0rr2ap44ej.apps.googleusercontent.com",
+    });
 
 
     if (response?.type === "success") {

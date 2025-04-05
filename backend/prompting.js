@@ -60,7 +60,7 @@ function generatePrompt(goal, diet, restrictions, dislikes, likes, ingredients, 
     template += dishTypePrompt(dishtype) + "\n\n";
 
     // Add instructions for meal formatting
-    template += "Give me a meal based on the information I gave you.";
+    template += "Give me a meal based on the information I gave you. Prioritize what I currently have over what I like";
 
     console.log(template);  // Or return the string if needed
     return template;
