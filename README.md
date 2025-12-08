@@ -17,7 +17,7 @@ If you're reviewing this repo and just want to quickly understand the experience
 - **Saved meals & calendar planning**  
   `![Calendar & Saved Meals](docs/previews/calendar.png)`
 
-> To enable these previews, export screenshots or a short GIF from your simulator/device and save them under `docs/previews/` with the filenames above, then remove the backticks around the `![...]` lines so the images render on GitHub.
+> Will upload gifs that quickly show the app interface and interactions
 
 ---
 
