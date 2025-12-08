@@ -1,20 +1,47 @@
+# Meal4U
+
+Meal4U is a personalized meal-planning and recipe recommendation app. It helps users define their dietary goals and preferences (diet type, restrictions, dislikes, etc.), then generates AI-powered meal and recipe suggestions, tracks saved recipes, and integrates calendar-based planning.
+
 ---
+
+## 🧱 Architecture & Infrastructure
+
+**Frontend / Mobile App**
+- Built with **React Native** and **Expo**.
+- Uses **React Navigation** (bottom tabs, drawer) for navigation.
+- Screens include onboarding questionnaire steps (diet type, dislikes, restrictions, goals), AI recipe generation, saved recipes, calendar view, and user profile.
+
+**Authentication**
+- **Firebase Authentication** for user accounts.
+- Supports **Google** and **Apple** sign-in (via Expo auth + Firebase).
+
+**Backend / Services**
+- Node/JS backend modules under `backend/` (e.g. `backend/api.js`, `backend/prompting.js`) for:
+  - Building prompts and calling **Google Generative AI** (`@google/generative-ai`).
+  - Serving recipe / meal suggestions based on user profile and preferences.
+
+**Build & Deployment**
+- Managed by **Expo** with **EAS** for building development and production clients.
+- iOS and Android native projects are included under `ios/` and `android/` for EAS builds and device testing.
+
+---
+
+## 📋 Prerequisites
+
 Ensure your system meets the following requirements before proceeding:
 
 - [**Node.js**](https://github.com/nvm-sh/nvm) (Recommended: use `nvm` to manage versions)
 - [**Expo CLI**](https://docs.expo.dev/get-started/installation/) (`npm install -g expo-cli`)
 - [**EAS CLI**](https://expo.dev/eas) (`npm install -g eas-cli`)
-- [**CocoaPods**](https://cocoapods.org/)** (For iOS)** (`sudo gem install cocoapods`)
-- **A Firebase Project** with Authentication enabled (Google & Apple login)
-- **A Registered Apple Developer Account** (For Apple Sign-in)
+- [**CocoaPods**](https://cocoapods.org/) **(for iOS)**
+- A **Firebase project** with Authentication enabled (Google & Apple login)
+- An **Apple Developer account** if you want Apple Sign-In on a real device
 
 ---
 
-## ⚡ **Project Setup**
+## ⚡ Project Setup
 
-Follow these steps to set up the project:
-
-### **1️⃣ Clone the Repository**
+### 1. Clone & Install
 
 ```sh
 mkdir mealingful && cd mealingful
@@ -23,184 +50,61 @@ cd meal4u
 npm install
 ```
 
-### **2️⃣ Install Required Packages**
-
-Run the following commands:
-
-```sh
-# Expo version
-npm install expo@~51.0.37
-
-# Firebase SDK
-npm install firebase
-
-# Google Generative AI
-npm install @google/generative-ai
-
-# Navigation & UI
-npm install @react-navigation/native
-npm install react-native-screens react-native-safe-area-context
-npm install @react-navigation/bottom-tabs
-npm install @react-navigation/drawer
-npm install react-native-gesture-handler
-npm install react-native-vector-icons
-npm install react-native-responsive-screen
-npm i react-native-heroicons react-native-svg
-
-# Date Handling
-npm install dayjs
-
-# Calendar Component
-npm install react-native-calendars
-```
+Most required packages (Expo, React Navigation, Firebase, Google Generative AI, etc.) are already listed in `package.json` and will be installed via `npm install`. Only install extra packages if you change dependencies.
 
 ---
 
-## 🚀 **Expo Dev Client Setup (Required for Google & Apple Login)**
+## 🔥 Firebase & Auth Setup (High-Level)
 
-Expo Go **does not support Apple & Google login**, so you need `expo-dev-client`:
+1. Create a Firebase project in the [Firebase Console](https://console.firebase.google.com/).
+2. Enable **Email/Password**, **Google**, and **Apple** providers under **Authentication → Sign-in method**.
+3. Download the config files and add them to the native projects:
+   - Android: `android/app/google-services.json`
+   - iOS: `ios/GoogleService-Info.plist`
+4. Configure your Firebase web credentials (`apiKey`, `authDomain`, etc.) in the app's Firebase config file (see `firebase.js` under `src/backend/` or your current config location).
+5. For Google and Apple sign-in, configure the correct client IDs and redirect URIs in the corresponding login code (e.g. `LoginPage.js`).
 
-```sh
-expo install expo-dev-client
-```
-
-To build a local development version:
-
-```sh
-eas build -p ios --profile development
-```
-
-Then install the `.ipa` on your iPhone.
+Refer to the Firebase and Expo docs for the latest platform-specific details.
 
 ---
 
-## 🔥 **Firebase Setup**
+## 📱 Running the App
 
-### **1️⃣ Create a Firebase Project**
-
-1. Visit [Firebase Console](https://console.firebase.google.com/)
-2. Create a new project (`Meal4U`)
-3. Go to **Authentication** → `Sign-in method`
-4. Enable **Google** and **Apple** authentication
-
-### **2️⃣ Download Firebase Configuration Files**
-
-1. **For Android**: Download `google-services.json` and place it in:
-   ```
-   android/app/google-services.json
-   ```
-2. **For iOS**: Download `GoogleService-Info.plist` and place it in:
-   ```
-   ios/GoogleService-Info.plist
-   ```
-
-### **3️⃣ Firebase Initialization**
-
-Create a `firebase.js` file inside `src/backend/`:
-
-```js
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
-
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-```
-
----
-
-## ✅ **Google & Apple Login Setup**
-
-### **1️⃣ Google Sign-In Configuration**
-
-#### **🔹 Enable Google Authentication in Firebase**
-
-1. Go to **Firebase Console** → `Authentication`
-2. Enable `Google Sign-In`
-3. Copy your **Web Client ID**
-
-#### **🔹 Install Google Auth Session**
-
-```sh
-expo install expo-auth-session
-```
-
-#### **🔹 Update Your Google Login Code**
-
-Modify `LoginPage.js`:
-
-```js
-import * as Google from 'expo-auth-session/providers/google';
-import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { auth } from './firebase';
-
-const [request, response, promptAsync] = Google.useAuthRequest({
-  iosClientId: "YOUR_IOS_CLIENT_ID",
-  webClientId: "YOUR_WEB_CLIENT_ID",
-  redirectUri: "https://YOUR_PROJECT.firebaseapp.com/__/auth/handler",
-  useProxy: false,
-});
-```
-
----
-
-### **2️⃣ Apple Sign-In Configuration**
-
-#### **🔹 Enable Apple Sign-In in Firebase**
-
-1. Go to **Firebase Console** → `Authentication`
-2. Enable `Apple Sign-In`
-3. Copy your **Team ID & Key ID** from **Apple Developer Portal**
-
-#### **🔹 Install Apple Authentication**
-
-```sh
-expo install expo-apple-authentication
-```
-
-#### **🔹 Update Your Apple Login Code**
-
-Modify `LoginPage.js`:
-
-```js
-import * as AppleAuthentication from 'expo-apple-authentication';
-import { OAuthProvider, signInWithCredential } from "firebase/auth";
-```
-
----
-
-## 🚀 **Run the App**
+For local development with Expo:
 
 ```sh
 npx expo start
 ```
 
-**For Apple Login & Google Login to work, use:**
+This will start the Metro bundler; you can then run the app in:
+- iOS Simulator
+- Android Emulator
+- Expo client on a physical device
 
-```sh
-eas build -p ios --profile development
-```
+> Note: For **Google & Apple login**, you generally need a **custom dev client** instead of Expo Go.
 
 ---
 
-## 📆 **Building & Deploying**
+## 🧪 Dev Client & Production Builds (Overview)
 
-```sh
+- Install dev client support:
+
+  ```sh
+  expo install expo-dev-client
+  ```
+
+- Build development client for iOS:
+
+  ```sh
+eas build -p ios --profile development
+  ```
+
+- Build production apps:
+
+  ```sh
 eas build -p ios --profile production
 eas build -p android --profile production
-```
+  ```
 
----
-
-## 🎉 **Congratulations!**
-
-You are now ready to develop and test **Meal4U** with full **Google & Apple login support**! 🚀
+See the official Expo/EAS docs for detailed configuration of bundle IDs, provisioning profiles, and app store submission.
 
