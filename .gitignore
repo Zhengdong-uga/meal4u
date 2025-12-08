@@ -29,7 +29,15 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
+.env.*
 .env*.local
 
 # typescript
 *.tsbuildinfo
+
+# api keys
+apikeys.json
+credentials.json
+credentials/
+ios/GoogleService-Info.plist

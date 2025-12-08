@@ -1,27 +1,36 @@
 {
   "expo": {
-    "name": "demo1",
-    "slug": "demo1",
+    "name": "Sizzle",
+    "slug": "meal4u",
+    "scheme": "meal4u",
     "version": "1.0.0",
     "orientation": "portrait",
+    "platforms": ["ios", "android", "web"],
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FFFFFF"
     },
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.persimmoners.meal4u",
+      "supportsTablet": true,
+      "icon": "./assets/icon.png" 
     },
     "android": {
+      "package": "com.persimmoners.meal4u",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#FFFFFF"
       }
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b565d2cd-de61-4e4f-a06f-df8486cd7ce8"
+      }
     }
   }
 }

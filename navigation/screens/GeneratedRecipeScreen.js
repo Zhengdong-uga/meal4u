@@ -1,139 +1,321 @@
 import React, { useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { doc, getDoc, updateDoc, getFirestore } from 'firebase/firestore';
+import { auth } from '../../backend/src/firebase';
 
 export default function GeneratedRecipeScreen({ route, navigation }) {
-    const { recipe } = route.params;  // receiving the generated recipe
-    const [activeTab, setActiveTab] = useState('details');  // Track active tab ('details' or 'instructions')
-    // Save Recipe functionality
-    const handleSaveRecipe = () => {
-        navigation.navigate('SavedRecipes', { newRecipe: recipe });
-    };
-    const handleAddToPlan = () => {
-        navigation.navigate('Calendar', { newRecipe: recipe });
-    };
+  const { recipe } = route.params;
+  const [activeTab, setActiveTab] = useState('details');
 
+  // For responsive design
+  const screenWidth = Dimensions.get('window').width;
+  const isSmallScreen = screenWidth < 375;
 
-    return (
-        <View style={styles.container}>
-            {/* Back Button */}
-            <TouchableOpacity onPress={() => navigation.navigate('AI')} style={styles.backButton}>
-                <Ionicons name="arrow-back-outline" size={24} color="black" />
-            </TouchableOpacity>
+  const saveRecipeToFirebase = async (recipe) => {
+    const user = auth.currentUser;
+    if (user) {
+      const firestore = getFirestore();
+      const userDocRef = doc(firestore, 'Users', user.uid);
+      try {
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          const recipeData = {
+            name: recipe.name,
+            time: recipe.time,
+            difficulty: recipe.difficulty,
+            ingredients: recipe.ingredients,
+            instructions: recipe.instructions,
+            description: recipe.description,
+            nutrition: recipe.nutrition || {}, // Add nutrition to be saved
+          };
+          await updateDoc(userDocRef, {
+            savedRecipes: [...userDoc.data().savedRecipes, recipeData],
+          });
+        }
+      } catch (error) {
+        console.error('Error saving recipe:', error);
+      }
+    }
+  };
 
-            {/* Recipe Card */}
-            <View style={styles.recipeCard}>
-                <Text style={styles.recipeName}>{recipe.name}</Text>
-                <View style={styles.recipeInfo}>
-                    <Text>{recipe.time}</Text>
-                    <Text>{recipe.difficulty}</Text>
-                </View>
+  const handleSaveRecipe = async () => {
+    console.log("Saving recipe:", recipe);
+    try {
+      await saveRecipeToFirebase(recipe);
+      console.log("Recipe saved successfully!");
+      navigation.navigate('SavedRecipes', { newRecipe: recipe });
+    } catch (error) {
+      console.error("Failed to save the recipe: ", error);
+      alert("An error occurred while saving the recipe. Please try again.");
+    }
+  };
 
-                {/* Tab Switch */}
-                <View style={styles.tabContainer}>
-                    <TouchableOpacity
-                        style={[styles.tabButton, activeTab === 'details' ? styles.activeTab : null]}
-                        onPress={() => setActiveTab('details')}
-                    >
-                        <Text style={styles.tabText}>Details</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.tabButton, activeTab === 'instructions' ? styles.activeTab : null]}
-                        onPress={() => setActiveTab('instructions')}
-                    >
-                        <Text style={styles.tabText}>Instructions</Text>
-                    </TouchableOpacity>
-                </View>
+  const handleAddToPlan = async () => {
 
-                {/* Content Switch based on active tab */}
-                {activeTab === 'instructions' ? (
-                    <ScrollView style={styles.detailsOrInstructions}>
-                        <Text>Instructions:</Text>
-                        {recipe.instructions.map((instruction, index) => (
-                            <View key={index} style={{ flexDirection: 'row', marginVertical: 5 }}>
-                                <Text style={{ fontWeight: 'bold' }}>{`Step ${index + 1}: `}</Text>
-                                <Text>{instruction}</Text>
-                            </View>
-                        ))}
-                    </ScrollView>
-                ) : (
-                    <ScrollView style={styles.detailsOrInstructions}>
-                        <Text>Ingredients:</Text>
-                        {recipe.ingredients.map((item, index) => (
-                            <View key={index} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                                <Text>{item.name}</Text>
-                                <Text>{item.amount}</Text>
-                            </View>
-                        ))}
-                    </ScrollView>
-                )}
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        const firestore = getFirestore();
+        const userDocRef = doc(firestore, 'Users', user.uid);
+        try {
+          const userDoc = await getDoc(userDocRef);
+          await updateDoc(userDocRef, {
+            mealsImplemented: userDoc.data().mealsImplemented + 1,
+          })
+        } catch (error) {
+          console.error('Error updating user meal count:', error);
+        }
+      };
+    }
+    catch (error) {
+      console.error('Error updating user meal count:', error);
+    }
 
+    navigation.navigate('Calendar', { newRecipe: recipe });
+  };
 
+  const handleBackButton = () => {
+    if (route.params?.fromScreen === 'SavedRecipes') {
+      navigation.navigate('SavedRecipes');
+    } else if (route.params?.fromScreen === 'Profile') {
+      navigation.navigate('Profile');
+    } else {
+      // Default to AI screen if no specific source is specified
+      navigation.navigate('Main', { screen: 'Meal Generating' });
+    }
+  };
 
-                {/* Action Buttons */}
-                <View style={styles.actions}>
-                {/* save recipe button */}
-                <TouchableOpacity style={styles.saveButton} onPress={handleSaveRecipe}>
-                    <Text style={{ color: 'white' }}>Save Recipe</Text>
-                </TouchableOpacity>
+  return (
+    <View style={styles.container}>
+      <TouchableOpacity
+        onPress={handleBackButton}
+        style={styles.backButton}
+      >
+        <Ionicons name="arrow-back-outline" size={30} color="black" />
+      </TouchableOpacity>
 
-                {/* add to plan button */}
-                <TouchableOpacity style={styles.addToPlanButton} onPress={handleAddToPlan}>
-                    <Text style={{ color: 'white' }}>Add to Plan</Text>
-                </TouchableOpacity>
-                </View>
-            </View>
+      <View style={styles.recipeCard}>
+        <Text style={styles.recipeName}>
+          {recipe.name || 'Generated Recipe'}
+        </Text>
+        <View style={styles.recipeInfo}>
+          <Text>{recipe.time || '30 mins'}</Text>
+          <Text>{recipe.difficulty || 'Medium'}</Text>
         </View>
-    );
+
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'details' && styles.activeTab]}
+            onPress={() => setActiveTab('details')}
+          >
+            <Text style={[styles.tabText, activeTab === 'details' && styles.activeTabText]}>
+              {isSmallScreen ? 'Ingred.' : 'Ingredients'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'instructions' && styles.activeTab]}
+            onPress={() => setActiveTab('instructions')}
+          >
+            <Text style={[styles.tabText, activeTab === 'instructions' && styles.activeTabText]}>
+              {isSmallScreen ? 'Steps' : 'Steps'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'nutrition' && styles.activeTab]}
+            onPress={() => setActiveTab('nutrition')}
+          >
+            <Text style={[styles.tabText, activeTab === 'nutrition' && styles.activeTabText]}>
+              Nutrition
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={styles.detailsOrInstructions}>
+          {activeTab === 'details' ? (
+            <>
+              <Text style={styles.sectionTitle}>Ingredients:</Text>
+              {recipe.ingredients &&
+                recipe.ingredients.map((ingredient, index) => (
+                  <Text key={index} style={styles.ingredientItem}>
+                    • {ingredient}
+                  </Text>
+                ))}
+            </>
+          ) : activeTab === 'instructions' ? (
+            <>
+              <Text style={styles.sectionTitle}>Instructions:</Text>
+              {recipe.instructions &&
+                recipe.instructions.map((instruction, index) => (
+                  <Text key={index} style={styles.instructionItem}>
+                    {index + 1}. {instruction}
+                  </Text>
+                ))}
+            </>
+          ) : (
+            <>
+              <Text style={styles.sectionTitle}>Nutrition:</Text>
+              {recipe.nutrition ? (
+                <View style={styles.nutritionContainer}>
+                  {Object.entries(recipe.nutrition).map(([key, value], index) => (
+                    <View key={index} style={styles.nutritionRow}>
+                      <Text style={styles.nutritionLabel}>{key}</Text>
+                      <Text style={styles.nutritionValue}>{value}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.noNutritionText}>Nutrition information not available</Text>
+              )}
+            </>
+          )}
+        </ScrollView>
+
+        <View style={styles.actions}>
+          <TouchableOpacity style={styles.saveButton} onPress={handleSaveRecipe}>
+            <Text style={[styles.buttonText, styles.saveButtonText]}>Save Recipe</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addToPlanButton} onPress={handleAddToPlan}>
+            <Text style={[styles.buttonText, styles.addToPlanButtonText]}>Add to Plan</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20 },
-    backButton: {
-        position: 'absolute',
-        top: 20,
-        left: 20,
-        zIndex: 1,
-    },
-    recipeCard: { padding: 20, borderRadius: 10, backgroundColor: '#f0f0f0', marginTop: 60 },
-    recipeName: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
-    recipeInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20,},
-    tabContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 20,
-        backgroundColor: '#e0e0e0',
-        borderRadius: 10,
-    },
-    tabButton: {
-        flex: 1,
-    padding: 15,
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#FBF0E9'
+  },
+  backButton: {
+    position: 'absolute',
+    top: 30,
+    left: 20,
+    zIndex: 1
+  },
+  recipeCard: {
+    padding: 30,
+    borderRadius: 15,
+    backgroundColor: '#FFFFFF',
+    marginTop: 60,
+    borderWidth: 1,
+    borderColor: '#664E2D',
+  },
+  recipeName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'left',
+    color: '#664E2D'
+  },
+  recipeInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20
+  },
+  // Updated tab styles to match CalendarScreen
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F0F0F0',
+    borderRadius: 10,
+    marginBottom: 15,
+    marginRight: 2,
+    padding: 2,
+  },
+  tabButton: {
+    flex: 1,
+    padding: 12,
     alignItems: 'center',
-    borderRadius: 10,  // border radius is applied
-    },
-    activeTab: {
-        backgroundColor: '#ccc',
-        
-    },
-    tabText: {
-        fontWeight: 'bold',
-    },
-    detailsOrInstructions: {
-        marginBottom: 20,
-    },
-    actions: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-    saveButton: {
-        padding: 10,
-        backgroundColor: 'black',
-        borderRadius: 5,
-    },
-    addToPlanButton: {
-        padding: 10,
-        backgroundColor: 'green',
-        borderRadius: 5,
-    },
+    borderRadius: 10,
+    minWidth: 40,
+  },
+  activeTab: {
+    backgroundColor: '#B8CCBA',  // Using the color from CalendarScreen
+  },
+  tabText: {
+    fontWeight: '500',
+    color: '#664E2D',
+    fontSize: 12,
+    textAlign: 'center',
+    flexShrink: 1,
+  },
+  activeTabText: {
+    fontWeight: 'bold',
+    color: '#48755C',
+  },
+  detailsOrInstructions: {
+    maxHeight: 300,
+    marginBottom: 20
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#231F20'
+  },
+  ingredientItem: {
+    fontSize: 18,
+    marginBottom: 5
+  },
+  instructionItem: {
+    fontSize: 18,
+    marginBottom: 10
+  },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between'
+  },
+  saveButton: {
+    padding: 20,
+    backgroundColor: '#F0DED0',
+    borderRadius: 8,
+    flex: 1,
+    marginRight: 20
+  },
+  addToPlanButton: {
+    padding: 20,
+    backgroundColor: '#48755C',
+    borderRadius: 8,
+    flex: 1
+  },
+  buttonText: {
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  addToPlanButtonText: {
+    color: '#FFFFFF', // White text for "Add to Plan"
+  },
+  saveButtonText: {
+    color: '#664E2D', // Original brown text for "Save Recipe"
+  },
+  // Nutrition tab styles
+  nutritionContainer: {
+    marginTop: 5,
+  },
+  nutritionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+  },
+  nutritionLabel: {
+    fontSize: 16,
+    color: '#664E2D',
+  },
+  nutritionValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#48755C',
+  },
+  noNutritionText: {
+    fontSize: 16,
+    color: '#999999',
+    textAlign: 'center',
+    padding: 20,
+  },
 });
