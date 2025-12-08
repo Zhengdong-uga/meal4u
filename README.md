@@ -4,6 +4,23 @@ Meal4U is a personalized meal-planning and recipe recommendation app. It helps u
 
 ---
 
+## 👀 App Preview (for reviewers)
+
+If you're reviewing this repo and just want to quickly understand the experience, here’s a simple preview flow you can plug in once you have media assets ready:
+
+- **Onboarding (goals & diet preferences)**  
+  `![Onboarding](docs/previews/onboarding.png)`
+
+- **AI-powered recipe generation**  
+  `![AI Recipe Flow](docs/previews/ai-recipe.gif)`
+
+- **Saved meals & calendar planning**  
+  `![Calendar & Saved Meals](docs/previews/calendar.png)`
+
+> To enable these previews, export screenshots or a short GIF from your simulator/device and save them under `docs/previews/` with the filenames above, then remove the backticks around the `![...]` lines so the images render on GitHub.
+
+---
+
 ## 🧱 Architecture & Infrastructure
 
 **Frontend / Mobile App**
@@ -23,22 +40,6 @@ Meal4U is a personalized meal-planning and recipe recommendation app. It helps u
 **Build & Deployment**
 - Managed by **Expo** with **EAS** for building development and production clients.
 - iOS and Android native projects are included under `ios/` and `android/` for EAS builds and device testing.
----
-
-## 👀 App Preview (for HR / reviewers)
-
-If you're reviewing this repo and just want to quickly understand the experience, here’s a simple preview flow you can plug in once you have media assets ready:
-
-- **Onboarding (goals & diet preferences)**  
-  `![Onboarding](docs/previews/onboarding.png)`
-
-- **AI-powered recipe generation**  
-  `![AI Recipe Flow](docs/previews/ai-recipe.gif)`
-
-- **Saved meals & calendar planning**  
-  `![Calendar & Saved Meals](docs/previews/calendar.png)`
-
-> To enable these previews, export screenshots or a short GIF from your simulator/device and save them under `docs/previews/` with the filenames above, then remove the backticks around the `![...]` lines so the images render on GitHub.
 
 ---
 
