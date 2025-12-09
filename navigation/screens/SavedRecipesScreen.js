@@ -49,12 +49,12 @@ const RecipeCard = ({ recipe, onPress, isSelectionMode = false, onSelect = null 
   const getCategoryIcon = () => {
     const cat = (category || '').toLowerCase();
     
-    if (cat.includes('breakfast')) return 'sunny-outline';
-    if (cat.includes('lunch')) return 'restaurant-outline';
-    if (cat.includes('dinner')) return 'moon-outline';
+    if (cat.includes('breakfast')) return 'partly-sunny-outline';
+    if (cat.includes('lunch')) return 'pizza-outline';
+    if (cat.includes('dinner')) return 'moon';
     if (cat.includes('dessert')) return 'ice-cream-outline';
-    if (cat.includes('drink')) return 'wine-outline';
-    if (cat.includes('snack')) return 'cafe-outline';
+    if (cat.includes('drink')) return 'cafe-outline';
+    if (cat.includes('snack')) return 'nutrition-outline';
     
     // Default icon
     return 'nutrition-outline';
@@ -89,7 +89,7 @@ const RecipeCard = ({ recipe, onPress, isSelectionMode = false, onSelect = null 
           
           {difficulty && (
             <View style={styles.detailItem}>
-              <Icon name="thermometer-outline" size={14} color="#666666" />
+              <Icon name="bar-chart-outline" size={14} color="#666666" />
               <Text style={styles.detailText}>{difficulty}</Text>
             </View>
           )}
@@ -111,7 +111,7 @@ const RecipeCard = ({ recipe, onPress, isSelectionMode = false, onSelect = null 
         </TouchableOpacity>
       )}
       
-      <Icon name="chevron-forward" size={20} color="#CCCCCC" style={styles.arrowIcon} />
+      <Icon name="chevron-forward-outline" size={20} color="#CCCCCC" style={styles.arrowIcon} />
     </TouchableOpacity>
   );
 };
@@ -241,7 +241,7 @@ export default function SavedRecipesScreen({ navigation, route }) {
                     }}
                     style={styles.headerButton}
                 >
-                    <Icon name="arrow-back" size={24} color="#48755C" />
+                    <Icon name="chevron-back-outline" size={24} color="#48755C" />
                 </TouchableOpacity>
             ),
             // Removed the headerRight (plus button) as requested
@@ -365,7 +365,7 @@ export default function SavedRecipesScreen({ navigation, route }) {
             <View style={styles.container}>
                 {/* Search Bar */}
                 <View style={styles.searchContainer}>
-                    <Icon name="search" size={20} color="#999" style={styles.searchIcon} />
+                    <Icon name="search-outline" size={20} color="#999" style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
                         placeholder="Search your recipes..."
@@ -377,7 +377,7 @@ export default function SavedRecipesScreen({ navigation, route }) {
                     />
                     {searchQuery !== '' && (
                         <TouchableOpacity onPress={() => setSearchQuery('')}>
-                            <Icon name="close-circle" size={20} color="#999" />
+                            <Icon name="close-circle-outline" size={20} color="#999" />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -408,7 +408,7 @@ export default function SavedRecipesScreen({ navigation, route }) {
                     />
                 ) : (
                     <View style={styles.emptyContainer}>
-                        <Icon name="search-outline" size={60} color="#CCC" />
+                        <Icon name="book-outline" size={60} color="#CCC" />
                         <Text style={styles.emptyTitle}>No recipes found</Text>
                         <Text style={styles.emptyText}>
                             {searchQuery ?

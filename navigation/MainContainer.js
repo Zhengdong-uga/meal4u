@@ -70,11 +70,11 @@ function TabNavigator() {
                     let rn = route.name;
 
                     if (rn === calendarName) {
-                        iconName = focused ? 'calendar' : 'calendar-outline';
+                        iconName = focused ? 'calendar' : 'calendar-clear-outline';
                     } else if (rn === aiName) {
                         iconName = focused ? 'sparkles' : 'sparkles-outline';
                     } else if (rn === profileName) {
-                        iconName = focused ? 'person' : 'person-outline';
+                        iconName = focused ? 'person-circle' : 'person-circle-outline';
                     }
 
                     return <Ionicons name={iconName} size={Number(size)} color={color} />;

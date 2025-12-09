@@ -41,7 +41,7 @@ const RecipeCard = ({ recipe, userIngredients = [], onSave, onAddToPlan, onBack,
         <View style={styles.header}>
           {onBack && (
             <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
+                <Ionicons name="chevron-back-outline" size={24} color={COLORS.primary} />
             </TouchableOpacity>
           )}
 
@@ -72,28 +72,34 @@ const RecipeCard = ({ recipe, userIngredients = [], onSave, onAddToPlan, onBack,
           ) : null}
         </View>
 
-        {/* Action Buttons Row */}
-        <View style={styles.actionRow}>
+        {/* Action Buttons Row - Only show if actions are provided */}
+        {(onSave || onAddToPlan) && (
+          <View style={styles.actionRow}>
+            {onSave && (
           <TouchableOpacity 
             style={[styles.actionButton, styles.secondaryButton]} 
             onPress={onSave}
           >
-            <Ionicons name="bookmark-outline" size={20} color={COLORS.primary} />
+            <Ionicons name="heart-outline" size={20} color={COLORS.primary} />
             <Text style={styles.secondaryButtonText}>Save</Text>
           </TouchableOpacity>
+            )}
 
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.primaryButton]} 
-            onPress={onAddToPlan}
-          >
-            <Text style={styles.primaryButtonText}>Add to Plan</Text>
-          </TouchableOpacity>
-        </View>
+            {onAddToPlan && (
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.primaryButton]} 
+                onPress={onAddToPlan}
+              >
+                <Text style={styles.primaryButtonText}>Add to Plan</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
         
         {/* Discard Button (Text Only) */}
         {onDiscard && (
             <TouchableOpacity onPress={onDiscard} style={styles.discardButton}>
-                <Ionicons name="trash-outline" size={16} color={COLORS.error} />
+                <Ionicons name="trash-bin-outline" size={16} color={COLORS.error} />
                 <Text style={styles.discardText}>Discard Recipe</Text>
             </TouchableOpacity>
         )}
