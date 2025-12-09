@@ -133,10 +133,15 @@ const Toast = ({ visible, message, type }) => {
     );
 };
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useIsFocused } from '@react-navigation/native';
+
 export default function AIScreen({ navigation }) {
+    const isFocused = useIsFocused();
     const [ingredientInput, setIngredientInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [preferencesModalVisible, setPreferencesModalVisible] = useState(false);
+    const [lastRecipe, setLastRecipe] = useState(null);
 
     // Toast state
     const [toast, setToast] = useState({
@@ -177,6 +182,23 @@ export default function AIScreen({ navigation }) {
         prepareTime: ['Under 15 mins', 'Under 30 mins', '1 hour'],
         dishType: ['Asian', 'American', 'Mediterranean', 'Indian'],
     };
+
+    useEffect(() => {
+        const loadLastRecipe = async () => {
+            try {
+                const stored = await AsyncStorage.getItem('last_generated_recipe');
+                if (stored) {
+                    setLastRecipe(JSON.parse(stored));
+                }
+            } catch (e) {
+                console.error("Failed to load last recipe", e);
+            }
+        };
+        
+        if (isFocused) {
+            loadLastRecipe();
+        }
+    }, [isFocused]);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -274,6 +296,18 @@ export default function AIScreen({ navigation }) {
                 notes: ['Generated with AI based on your preferences.'],
             };
 
+            // Save to local storage for recovery
+            try {
+                const storageData = {
+                    recipe: generatedRecipe,
+                    userIngredients: ingredients
+                };
+                await AsyncStorage.setItem('last_generated_recipe', JSON.stringify(storageData));
+                setLastRecipe(storageData); // Update state to store full object
+            } catch (e) {
+                console.error("Failed to save recipe locally", e);
+            }
+
             const user = auth.currentUser;
             if (user) {
                 const firestore = getFirestore();
@@ -288,7 +322,10 @@ export default function AIScreen({ navigation }) {
                 }
             };
 
-            navigation.navigate('GeneratedRecipe', { recipe: generatedRecipe });
+            navigation.navigate('GeneratedRecipe', { 
+                recipe: generatedRecipe,
+                userIngredients: ingredients 
+            });
         } catch (error) {
             console.error('Error generating recipe:', error);
             showToast('Failed to generate recipe. Please try again.', 'error');
@@ -332,6 +369,32 @@ export default function AIScreen({ navigation }) {
             >
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                     <View style={styles.contentContainer}>
+                        
+                        {/* Resume Last Recipe Card */}
+                        {lastRecipe && lastRecipe.recipe && (
+                            <TouchableOpacity
+                                style={styles.resumeCard}
+                                onPress={() => navigation.navigate('GeneratedRecipe', { 
+                                    recipe: lastRecipe.recipe,
+                                    userIngredients: lastRecipe.userIngredients || [] 
+                                })}
+                                activeOpacity={0.8}
+                            >
+                                <View style={styles.resumeContent}>
+                                    <View style={styles.resumeIconContainer}>
+                                        <Ionicons name="receipt-outline" size={20} color="#FFFFFF" />
+                                    </View>
+                                    <View style={styles.resumeTextContainer}>
+                                        <Text style={styles.resumeLabel}>Continue Cooking</Text>
+                                        <Text style={styles.resumeRecipeName} numberOfLines={1}>
+                                            {lastRecipe.recipe.name}
+                                        </Text>
+                                    </View>
+                                </View>
+                                <Ionicons name="chevron-forward" size={24} color="#48755C" />
+                            </TouchableOpacity>
+                        )}
+
                         <View style={styles.card}>
                             <Text style={styles.question}>What ingredients do you have?</Text>
                             <View style={styles.ingredientInputContainer}>
@@ -874,6 +937,56 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
     },
+    
+    // Resume Card Styles
+    resumeCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        shadowColor: '#48755C',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+        borderWidth: 1,
+        borderColor: '#E8F5F1',
+    },
+    resumeContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    resumeIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#48755C',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    resumeTextContainer: {
+        flex: 1,
+        marginRight: 8,
+    },
+    resumeLabel: {
+        fontSize: 12,
+        color: '#6B7280',
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 2,
+    },
+    resumeRecipeName: {
+        fontSize: 16,
+        color: '#1A1A1A',
+        fontWeight: '700',
+    },
+
     modalOverlay: {
         flex: 1,
         justifyContent: 'flex-end',

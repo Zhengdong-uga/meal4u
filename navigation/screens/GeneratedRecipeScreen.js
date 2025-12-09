@@ -1,16 +1,27 @@
 import React, { useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { doc, getDoc, updateDoc, getFirestore } from 'firebase/firestore';
 import { auth } from '../../backend/src/firebase';
+import RecipeCard from '../../components/RecipeCard';
+import { COLORS } from '../../constants/theme';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function GeneratedRecipeScreen({ route, navigation }) {
-  const { recipe } = route.params;
-  const [activeTab, setActiveTab] = useState('details');
+  const { recipe, userIngredients = [] } = route.params;
 
-  // For responsive design
-  const screenWidth = Dimensions.get('window').width;
-  const isSmallScreen = screenWidth < 375;
+  const handleDiscardRecipe = async () => {
+    try {
+      // Clear from local storage so it doesn't show in "Continue Cooking"
+      await AsyncStorage.removeItem('last_generated_recipe');
+      
+      // Navigate back to the source screen or Home
+      handleBackButton();
+    } catch (e) {
+      console.error("Error discarding recipe:", e);
+    }
+  };
 
   const saveRecipeToFirebase = async (recipe) => {
     const user = auth.currentUser;
@@ -27,7 +38,7 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
             ingredients: recipe.ingredients,
             instructions: recipe.instructions,
             description: recipe.description,
-            nutrition: recipe.nutrition || {}, // Add nutrition to be saved
+            nutrition: recipe.nutrition || {},
           };
           await updateDoc(userDocRef, {
             savedRecipes: [...userDoc.data().savedRecipes, recipeData],
@@ -52,7 +63,6 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
   };
 
   const handleAddToPlan = async () => {
-
     try {
       const user = auth.currentUser;
       if (user) {
@@ -81,241 +91,33 @@ export default function GeneratedRecipeScreen({ route, navigation }) {
     } else if (route.params?.fromScreen === 'Profile') {
       navigation.navigate('Profile');
     } else {
-      // Default to AI screen if no specific source is specified
       navigation.navigate('Main', { screen: 'Meal Generating' });
     }
   };
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity
-        onPress={handleBackButton}
-        style={styles.backButton}
-      >
-        <Ionicons name="arrow-back-outline" size={30} color="black" />
-      </TouchableOpacity>
-
-      <View style={styles.recipeCard}>
-        <Text style={styles.recipeName}>
-          {recipe.name || 'Generated Recipe'}
-        </Text>
-        <View style={styles.recipeInfo}>
-          <Text>{recipe.time || '30 mins'}</Text>
-          <Text>{recipe.difficulty || 'Medium'}</Text>
-        </View>
-
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'details' && styles.activeTab]}
-            onPress={() => setActiveTab('details')}
-          >
-            <Text style={[styles.tabText, activeTab === 'details' && styles.activeTabText]}>
-              {isSmallScreen ? 'Ingred.' : 'Ingredients'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'instructions' && styles.activeTab]}
-            onPress={() => setActiveTab('instructions')}
-          >
-            <Text style={[styles.tabText, activeTab === 'instructions' && styles.activeTabText]}>
-              {isSmallScreen ? 'Steps' : 'Steps'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'nutrition' && styles.activeTab]}
-            onPress={() => setActiveTab('nutrition')}
-          >
-            <Text style={[styles.tabText, activeTab === 'nutrition' && styles.activeTabText]}>
-              Nutrition
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={styles.detailsOrInstructions}>
-          {activeTab === 'details' ? (
-            <>
-              <Text style={styles.sectionTitle}>Ingredients:</Text>
-              {recipe.ingredients &&
-                recipe.ingredients.map((ingredient, index) => (
-                  <Text key={index} style={styles.ingredientItem}>
-                    • {ingredient}
-                  </Text>
-                ))}
-            </>
-          ) : activeTab === 'instructions' ? (
-            <>
-              <Text style={styles.sectionTitle}>Instructions:</Text>
-              {recipe.instructions &&
-                recipe.instructions.map((instruction, index) => (
-                  <Text key={index} style={styles.instructionItem}>
-                    {index + 1}. {instruction}
-                  </Text>
-                ))}
-            </>
-          ) : (
-            <>
-              <Text style={styles.sectionTitle}>Nutrition:</Text>
-              {recipe.nutrition ? (
-                <View style={styles.nutritionContainer}>
-                  {Object.entries(recipe.nutrition).map(([key, value], index) => (
-                    <View key={index} style={styles.nutritionRow}>
-                      <Text style={styles.nutritionLabel}>{key}</Text>
-                      <Text style={styles.nutritionValue}>{value}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.noNutritionText}>Nutrition information not available</Text>
-              )}
-            </>
-          )}
-        </ScrollView>
-
-        <View style={styles.actions}>
-          <TouchableOpacity style={styles.saveButton} onPress={handleSaveRecipe}>
-            <Text style={[styles.buttonText, styles.saveButtonText]}>Save Recipe</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.addToPlanButton} onPress={handleAddToPlan}>
-            <Text style={[styles.buttonText, styles.addToPlanButtonText]}>Add to Plan</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <RecipeCard 
+          recipe={recipe} 
+          userIngredients={userIngredients}
+          onSave={handleSaveRecipe}
+          onAddToPlan={handleAddToPlan}
+          onBack={handleBackButton}
+          onDiscard={handleDiscardRecipe}
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#FBF0E9'
+    backgroundColor: COLORS.background,
   },
-  backButton: {
-    position: 'absolute',
-    top: 30,
-    left: 20,
-    zIndex: 1
-  },
-  recipeCard: {
-    padding: 30,
-    borderRadius: 15,
-    backgroundColor: '#FFFFFF',
-    marginTop: 60,
-    borderWidth: 1,
-    borderColor: '#664E2D',
-  },
-  recipeName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'left',
-    color: '#664E2D'
-  },
-  recipeInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20
-  },
-  // Updated tab styles to match CalendarScreen
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F0F0F0',
-    borderRadius: 10,
-    marginBottom: 15,
-    marginRight: 2,
-    padding: 2,
-  },
-  tabButton: {
-    flex: 1,
-    padding: 12,
-    alignItems: 'center',
-    borderRadius: 10,
-    minWidth: 40,
-  },
-  activeTab: {
-    backgroundColor: '#B8CCBA',  // Using the color from CalendarScreen
-  },
-  tabText: {
-    fontWeight: '500',
-    color: '#664E2D',
-    fontSize: 12,
-    textAlign: 'center',
-    flexShrink: 1,
-  },
-  activeTabText: {
-    fontWeight: 'bold',
-    color: '#48755C',
-  },
-  detailsOrInstructions: {
-    maxHeight: 300,
-    marginBottom: 20
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#231F20'
-  },
-  ingredientItem: {
-    fontSize: 18,
-    marginBottom: 5
-  },
-  instructionItem: {
-    fontSize: 18,
-    marginBottom: 10
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between'
-  },
-  saveButton: {
-    padding: 20,
-    backgroundColor: '#F0DED0',
-    borderRadius: 8,
-    flex: 1,
-    marginRight: 20
-  },
-  addToPlanButton: {
-    padding: 20,
-    backgroundColor: '#48755C',
-    borderRadius: 8,
-    flex: 1
-  },
-  buttonText: {
-    textAlign: 'center',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  addToPlanButtonText: {
-    color: '#FFFFFF', // White text for "Add to Plan"
-  },
-  saveButtonText: {
-    color: '#664E2D', // Original brown text for "Save Recipe"
-  },
-  // Nutrition tab styles
-  nutritionContainer: {
-    marginTop: 5,
-  },
-  nutritionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
-  },
-  nutritionLabel: {
-    fontSize: 16,
-    color: '#664E2D',
-  },
-  nutritionValue: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#48755C',
-  },
-  noNutritionText: {
-    fontSize: 16,
-    color: '#999999',
-    textAlign: 'center',
-    padding: 20,
+  scrollContainer: {
+    paddingBottom: 20,
+    paddingTop: 10,
   },
 });
