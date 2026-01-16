@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
-import { COLORS, SPACING, RADIUS, SHADOWS, FONTS } from '../constants/theme';
+import { SPACING, RADIUS, SHADOWS, FONTS } from '../constants/theme';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
-const RecipeCard = ({ recipe, userIngredients = [], onSave, onAddToPlan, onBack, onDiscard, contentContainerStyle }) => {
+const RecipeCard = ({ recipe, userIngredients = [], onSave, onAddToPlan, onBack, onDiscard, onShare, contentContainerStyle }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   if (!recipe) return null;
 
   const {
@@ -37,32 +41,40 @@ const RecipeCard = ({ recipe, userIngredients = [], onSave, onAddToPlan, onBack,
       {/* Main Card */}
       <View style={styles.card}>
         
-        {/* Header with Back Button */}
+        {/* Header with Back and Share Buttons */}
         <View style={styles.header}>
-          {onBack && (
-            <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                <Ionicons name="chevron-back-outline" size={24} color={COLORS.primary} />
-            </TouchableOpacity>
-          )}
+          <View style={styles.navigationRow}>
+            {onBack ? (
+              <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                  <Ionicons name="chevron-back-outline" size={24} color={theme.primary} />
+              </TouchableOpacity>
+            ) : <View />}
+            
+            {onShare && (
+              <TouchableOpacity onPress={onShare} style={styles.shareButton}>
+                  <Ionicons name="share-social-outline" size={24} color={theme.primary} />
+              </TouchableOpacity>
+            )}
+          </View>
 
           <Text style={styles.title}>{displayName}</Text>
           
           <View style={styles.tagsRow}>
             {time && (
               <View style={styles.tag}>
-                <Ionicons name="time-outline" size={14} color={COLORS.text} />
+                <Ionicons name="time-outline" size={14} color={theme.text} />
                 <Text style={styles.tagText}>{time}</Text>
               </View>
             )}
             {difficulty && (
               <View style={styles.tag}>
-                <Ionicons name="flash-outline" size={14} color={COLORS.text} />
+                <Ionicons name="flash-outline" size={14} color={theme.text} />
                 <Text style={styles.tagText}>{difficulty}</Text>
               </View>
             )}
             {category && (
-              <View style={[styles.tag, { backgroundColor: COLORS.secondary }]}>
-                <Text style={styles.tagText}>{category}</Text>
+              <View style={[styles.tag, { backgroundColor: theme.secondary }]}>
+                <Text style={[styles.tagText, { color: theme.primary }]}>{category}</Text>
               </View>
             )}
           </View>
@@ -80,7 +92,7 @@ const RecipeCard = ({ recipe, userIngredients = [], onSave, onAddToPlan, onBack,
             style={[styles.actionButton, styles.secondaryButton]} 
             onPress={onSave}
           >
-            <Ionicons name="heart-outline" size={20} color={COLORS.primary} />
+            <Ionicons name="heart-outline" size={20} color={theme.primary} />
             <Text style={styles.secondaryButtonText}>Save</Text>
           </TouchableOpacity>
             )}
@@ -99,7 +111,7 @@ const RecipeCard = ({ recipe, userIngredients = [], onSave, onAddToPlan, onBack,
         {/* Discard Button (Text Only) */}
         {onDiscard && (
             <TouchableOpacity onPress={onDiscard} style={styles.discardButton}>
-                <Ionicons name="trash-bin-outline" size={16} color={COLORS.error} />
+                <Ionicons name="trash-bin-outline" size={16} color={theme.error} />
                 <Text style={styles.discardText}>Discard Recipe</Text>
             </TouchableOpacity>
         )}
@@ -131,7 +143,7 @@ const RecipeCard = ({ recipe, userIngredients = [], onSave, onAddToPlan, onBack,
                   return (
                     <View key={index} style={styles.ingredientRow}>
                       <View style={[styles.checkbox, isAvailable && styles.checkboxChecked]}>
-                        {isAvailable && <Ionicons name="checkmark" size={12} color="white" />}
+                        {isAvailable && <Ionicons name="checkmark" size={12} color={theme.onPrimary} />}
                       </View>
                       <Text style={[styles.listItemText, isAvailable && styles.listItemTextAvailable]}>
                         {item}
@@ -184,38 +196,49 @@ const RecipeCard = ({ recipe, userIngredients = [], onSave, onAddToPlan, onBack,
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     padding: SPACING.m,
   },
   card: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: theme.surface,
     borderRadius: RADIUS.xxl,
     paddingHorizontal: SPACING.l,
     paddingTop: SPACING.xl,
     paddingBottom: SPACING.l,
     ...SHADOWS.medium,
+    shadowColor: theme.mode === 'dark' ? '#000' : theme.primary,
   },
   header: {
     marginBottom: SPACING.l,
   },
+  navigationRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.s,
+  },
   backButton: {
-    alignSelf: 'flex-start',
-    marginBottom: SPACING.m,
     padding: 8,
     marginLeft: -8, // Align icon visually
-    backgroundColor: '#F3F4F6',
+    backgroundColor: theme.mode === 'dark' ? '#333' : '#F3F4F6',
+    borderRadius: 20,
+  },
+  shareButton: {
+    padding: 8,
+    marginRight: -8, // Align icon visually
+    backgroundColor: theme.mode === 'dark' ? '#333' : '#F3F4F6',
     borderRadius: 20,
   },
   title: {
     ...FONTS.header,
     marginBottom: SPACING.s,
-    color: '#3F614C', // Forest Green Title
+    color: theme.primary,
   },
   description: {
     ...FONTS.body,
     marginTop: SPACING.m,
-    color: '#666',
+    color: theme.textSecondary,
   },
   tagsRow: {
     flexDirection: 'row',
@@ -226,7 +249,7 @@ const styles = StyleSheet.create({
   tag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: theme.mode === 'dark' ? '#333' : '#F3F4F6',
     paddingHorizontal: SPACING.m,
     paddingVertical: 6,
     borderRadius: RADIUS.xl,
@@ -235,7 +258,7 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.text,
+    color: theme.text,
   },
   
   // Buttons
@@ -254,21 +277,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primary,
     ...SHADOWS.light,
   },
   primaryButtonText: {
-    color: COLORS.onPrimary,
+    color: theme.onPrimary,
     fontWeight: '700',
     fontSize: 16,
   },
   secondaryButton: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: theme.border,
   },
   secondaryButtonText: {
-    color: COLORS.primary,
+    color: theme.primary,
     fontWeight: '700',
     fontSize: 16,
   },
@@ -281,7 +304,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   discardText: {
-    color: COLORS.error,
+    color: theme.error,
     fontWeight: '600',
     fontSize: 14,
   },
@@ -290,7 +313,7 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: theme.border,
     marginBottom: SPACING.m,
   },
   tab: {
@@ -300,15 +323,15 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: COLORS.primary,
+    borderBottomColor: theme.primary,
   },
   tabText: {
     fontSize: 16,
     fontWeight: '500',
-    color: COLORS.textSecondary,
+    color: theme.textSecondary,
   },
   activeTabText: {
-    color: COLORS.primary,
+    color: theme.primary,
     fontWeight: '700',
   },
 
@@ -324,6 +347,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...FONTS.subHeader,
+    color: theme.text,
     marginBottom: SPACING.m,
   },
   
@@ -338,27 +362,27 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 6, // Square with rounded corners
     borderWidth: 1.5,
-    borderColor: COLORS.primary,
+    borderColor: theme.primary,
     marginTop: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxChecked: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.primary,
   },
   listItemTextAvailable: {
-    color: '#3F614C', // Highlight color for available items
+    color: theme.primary, // Highlight color for available items
     fontWeight: '600',
   },
   availableBadge: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: theme.mode === 'dark' ? '#1E3326' : '#E8F5E9',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     marginLeft: 8,
   },
   availableText: {
-    color: '#2E7D32',
+    color: theme.primary,
     fontSize: 10,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -373,7 +397,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: COLORS.secondary,
+    backgroundColor: theme.secondary,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 2,
@@ -381,19 +405,19 @@ const styles = StyleSheet.create({
   stepNumber: {
     fontSize: 12,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: theme.primary,
   },
   listItemText: {
     flex: 1,
     fontSize: 16,
     lineHeight: 24,
-    color: COLORS.text,
+    color: theme.text,
   },
 
   // Nutrition
   divider: {
     height: 1,
-    backgroundColor: COLORS.border,
+    backgroundColor: theme.border,
     marginVertical: SPACING.xl,
   },
   nutritionGrid: {
@@ -403,20 +427,20 @@ const styles = StyleSheet.create({
   },
   nutritionItem: {
     width: '45%',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.mode === 'dark' ? '#333' : '#FAFAFA',
     padding: SPACING.m,
     borderRadius: RADIUS.m,
   },
   nutritionLabel: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: theme.textSecondary,
     marginBottom: 4,
     textTransform: 'uppercase',
   },
   nutritionValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: theme.primary,
   },
 });
 

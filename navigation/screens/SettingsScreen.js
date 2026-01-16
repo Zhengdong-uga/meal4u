@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -19,12 +19,15 @@ import { doc, deleteDoc, getFirestore } from 'firebase/firestore';
 import { auth } from '../../backend/src/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
 
 // Privacy Policy URL - Replace with your actual URL
 const PRIVACY_POLICY_URL = 'https://www.persimmoners.com/privacy-policy';
 const TERMS_OF_SERVICE_URL = 'https://www.persimmoners.com/terms-of-service';
 
 export default function SettingsScreen({ navigation }) {
+    const { theme, isDarkMode, toggleTheme } = useTheme();
+    const styles = useMemo(() => createSettingsStyles(theme), [theme]);
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [mealReminders, setMealReminders] = useState(true);
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
@@ -216,6 +219,24 @@ export default function SettingsScreen({ navigation }) {
                     />
                 </View>
 
+                <SectionHeader title="APPEARANCE" />
+                <View style={styles.section}>
+                    <SettingItem
+                        icon="moon-outline"
+                        title="Dark Mode"
+                        subtitle="Enable dark color scheme"
+                        showArrow={false}
+                        rightComponent={
+                            <Switch
+                                value={isDarkMode}
+                                onValueChange={toggleTheme}
+                                trackColor={{ false: '#E0E0E0', true: '#B8D4BE' }}
+                                thumbColor={isDarkMode ? COLORS.primary : '#F4F4F4'}
+                            />
+                        }
+                    />
+                </View>
+
                 {/* Preferences Section */}
                 <SectionHeader title="PREFERENCES" />
                 <View style={styles.section}>
@@ -296,7 +317,7 @@ export default function SettingsScreen({ navigation }) {
                 {/* App Info */}
                 <View style={styles.appInfo}>
                     <Text style={styles.appVersion}>Meal4U Version 1.0.0</Text>
-                    <Text style={styles.copyright}>© 2026 Persimmoners. All rights reserved.</Text>
+                    <Text style={styles.copyright}> 2026 Persimmoners. All rights reserved.</Text>
                 </View>
             </ScrollView>
 
@@ -473,10 +494,10 @@ Questions? Contact us at support@persimmoners.com`}
     );
 }
 
-const styles = StyleSheet.create({
+const createSettingsStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8F8F8',
+        backgroundColor: theme.background,
     },
     header: {
         flexDirection: 'row',
@@ -484,9 +505,9 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 16,
         paddingVertical: 12,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface,
         borderBottomWidth: 1,
-        borderBottomColor: '#EEEEEE',
+        borderBottomColor: theme.border,
     },
     backButton: {
         padding: 8,
@@ -495,7 +516,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#333',
+        color: theme.text,
     },
     headerPlaceholder: {
         width: 40,
@@ -506,32 +527,32 @@ const styles = StyleSheet.create({
     sectionHeader: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#666',
+        color: theme.textSecondary,
         marginTop: 24,
         marginBottom: 8,
         marginLeft: 20,
         letterSpacing: 0.5,
     },
     section: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface,
         borderTopWidth: 1,
         borderBottomWidth: 1,
-        borderColor: '#EEEEEE',
+        borderColor: theme.border,
     },
     settingItem: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 14,
         paddingHorizontal: 20,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface,
         borderBottomWidth: 1,
-        borderBottomColor: '#F5F5F5',
+        borderBottomColor: theme.border,
     },
     settingIconContainer: {
         width: 36,
         height: 36,
         borderRadius: 8,
-        backgroundColor: '#F0F8F0',
+        backgroundColor: theme.mode === 'dark' ? '#2C3E33' : '#F0F8F0',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 14,
@@ -542,21 +563,21 @@ const styles = StyleSheet.create({
     settingTitle: {
         fontSize: 16,
         fontWeight: '500',
-        color: '#333',
+        color: theme.text,
     },
     settingSubtitle: {
         fontSize: 13,
-        color: '#888',
+        color: theme.textSecondary,
         marginTop: 2,
     },
     dangerItem: {
         borderBottomWidth: 0,
     },
     dangerIconContainer: {
-        backgroundColor: '#FEE2E2',
+        backgroundColor: theme.mode === 'dark' ? '#4A2020' : '#FEE2E2',
     },
     dangerText: {
-        color: COLORS.error,
+        color: theme.error,
     },
     appInfo: {
         alignItems: 'center',
@@ -565,12 +586,13 @@ const styles = StyleSheet.create({
     },
     appVersion: {
         fontSize: 14,
-        color: '#999',
+        color: theme.textSecondary,
         marginBottom: 4,
     },
     copyright: {
         fontSize: 12,
-        color: '#BBB',
+        color: theme.textSecondary,
+        opacity: 0.7,
     },
     // Modal Styles
     modalOverlay: {
@@ -581,7 +603,7 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     modalContent: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface,
         borderRadius: 20,
         padding: 24,
         width: '100%',
@@ -594,12 +616,12 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#333',
+        color: theme.text,
         marginBottom: 12,
     },
     modalDescription: {
         fontSize: 15,
-        color: '#666',
+        color: theme.textSecondary,
         textAlign: 'center',
         lineHeight: 22,
         marginBottom: 24,
@@ -615,15 +637,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     cancelButton: {
-        backgroundColor: '#F0F0F0',
+        backgroundColor: theme.mode === 'dark' ? '#333' : '#F0F0F0',
     },
     cancelButtonText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#666',
+        color: theme.textSecondary,
     },
     deleteButton: {
-        backgroundColor: COLORS.error,
+        backgroundColor: theme.error,
     },
     deleteButtonText: {
         fontSize: 16,
@@ -637,7 +659,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     legalModalContent: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         maxHeight: '85%',
@@ -648,19 +670,19 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#EEEEEE',
+        borderBottomColor: theme.border,
     },
     legalModalTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#333',
+        color: theme.text,
     },
     legalModalBody: {
         padding: 20,
     },
     legalText: {
         fontSize: 14,
-        color: '#444',
+        color: theme.textSecondary,
         lineHeight: 22,
     },
 });

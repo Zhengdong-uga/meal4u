@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,9 @@ import {
   Image,
   Alert,
   SafeAreaView,
-  BackHandler
+  BackHandler,
+  RefreshControl,
+  StatusBar
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -19,9 +21,15 @@ import { doc, getDoc, updateDoc, getFirestore, setDoc } from 'firebase/firestore
 import { PanGestureHandler, State, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, useAnimatedGestureHandler } from 'react-native-reanimated';
 import RecipeCard from '../../components/RecipeCard';
+import EmptyState from '../../components/EmptyState';
+import HapticsService from '../../utils/haptics';
+import { useTheme } from '../../context/ThemeContext';
 import { COLORS } from '../../constants/theme';
 
 export default function EnhancedCalendarScreen({ navigation, route }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   // Helper function to get the current date in YYYY-MM-DD format based on local time
   const getLocalDateString = (date = new Date()) => {
     return date.getFullYear() + "-" +
@@ -40,52 +48,76 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [shoppingList, setShoppingList] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Load meals data from storage and Firestore
-  useEffect(() => {
-    const loadMeals = async () => {
-      try {
-        const user = auth.currentUser;
-        let parsedData = {};
-        
-        // Try loading from Firestore first if logged in
-        if (user) {
-            const firestore = getFirestore();
-            const userDocRef = doc(firestore, 'Users', user.uid);
-            const userDoc = await getDoc(userDocRef);
-            if (userDoc.exists() && userDoc.data().mealPlan) {
-                parsedData = userDoc.data().mealPlan;
-                console.log('Loaded meal plan from Firestore');
-            }
-        }
-
-        // If no data from Firestore (or not logged in), try AsyncStorage
-        if (Object.keys(parsedData).length === 0) {
-            const data = await AsyncStorage.getItem('mealPlanData');
-            if (data) {
-                parsedData = JSON.parse(data);
-                console.log('Loaded meal plan from AsyncStorage');
-            }
-        }
-
-        if (Object.keys(parsedData).length > 0) {
-          setMealsByDate(parsedData);
-          updateMarkedDates(parsedData);
-        }
-
-        // Set today as default selected date - USING LOCAL DATE STRING
-        const today = getLocalDateString();
-        setSelectedDate(today);
-      } catch (error) {
-        console.error('Error loading meal data:', error);
-        Alert.alert('Error', 'Failed to load your meal plan data');
-      } finally {
-        setLoading(false);
+  const loadMeals = useCallback(async (isRefreshing = false) => {
+    if (!isRefreshing) setLoading(true);
+    try {
+      const user = auth.currentUser;
+      let parsedData = {};
+      
+      // Try loading from Firestore first if logged in
+      if (user) {
+          const firestore = getFirestore();
+          const userDocRef = doc(firestore, 'Users', user.uid);
+          const userDoc = await getDoc(userDocRef);
+          if (userDoc.exists() && userDoc.data().mealPlan) {
+              parsedData = userDoc.data().mealPlan;
+              console.log('Loaded meal plan from Firestore');
+          }
       }
-    };
 
-    loadMeals();
+      // If no data from Firestore (or not logged in), try AsyncStorage
+      if (Object.keys(parsedData).length === 0) {
+          const data = await AsyncStorage.getItem('mealPlanData');
+          if (data) {
+              parsedData = JSON.parse(data);
+              console.log('Loaded meal plan from AsyncStorage');
+          }
+      }
+
+      if (Object.keys(parsedData).length > 0) {
+        setMealsByDate(parsedData);
+        // Only update marked dates if we're not refreshing (or if we want to force update)
+        // updateMarkedDates(parsedData); // This depends on selectedDate which might be closure stale if not careful
+        // But since we are updating mealsByDate, the useEffect for saving/marking will trigger? 
+        // No, useEffect [mealsByDate] will trigger saving.
+      } else if (Object.keys(parsedData).length === 0 && isRefreshing) {
+          // If we refreshed and got nothing, maybe clear? Or keep existing?
+          // Keeping existing is safer, but if remote deleted, we should sync.
+          // For now, let's assume empty means empty.
+          // setMealsByDate({}); 
+      }
+
+      // We should update marked dates here to be sure, but need current selectedDate?
+      // Actually, we can just rely on the mealsByDate update to trigger the other effect or just do it here.
+      // Let's rely on the state update.
+      
+    } catch (error) {
+      console.error('Error loading meal data:', error);
+      Alert.alert('Error', 'Failed to load your meal plan data');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    loadMeals();
+  }, [loadMeals]);
+
+  // Update marked dates whenever mealsByDate or selectedDate changes
+  // We already have:
+  // useEffect(() => { ... saveMeals ... updateMarkedDates ... }, [mealsByDate, loading, selectedDate]);
+  // This handles the side effects of mealsByDate changing.
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    HapticsService.light();
+    loadMeals(true);
+  }, [loadMeals]);
 
   // Handle hardware back button
   useEffect(() => {
@@ -209,6 +241,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
     const dateString = day.dateString || getLocalDateString(day);
 
     // Set the selected date
+    HapticsService.selection();
     setSelectedDate(dateString);
 
     // Update marked dates
@@ -216,6 +249,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
   }, [mealsByDate]);
 
   const handleAddMeal = async (type) => {
+    HapticsService.light();
     setModalVisible(false);
   
     try {
@@ -264,6 +298,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
           text: "Delete",
           style: "destructive",
           onPress: () => {
+            HapticsService.medium();
             setMealsByDate(prev => {
               const updatedDateMeals = { ...prev[selectedDate] };
               updatedDateMeals[mealTime].splice(index, 1);
@@ -329,6 +364,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
 
     const panGesture = useAnimatedGestureHandler({
       onStart: (_, ctx) => {
+        runOnJS(HapticsService.medium)();
         isDragging.value = true;
         ctx.startY = translateY.value;
       },
@@ -336,6 +372,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
         translateY.value = ctx.startY + event.translationY;
       },
       onEnd: (event, ctx) => {
+        runOnJS(HapticsService.light)();
         isDragging.value = false;
         // Snap to nearest row
         const rowOffset = Math.round(translateY.value / ROW_HEIGHT);
@@ -361,9 +398,9 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
         <Animated.View style={[
             styles.eventCard,
             animatedStyle,
-            { 
-                borderTopColor: meal.type === 'dinner' || meal.type === 'snacks' ? '#664E2D' : '#48755C',
-                backgroundColor: meal.type === 'dinner' || meal.type === 'snacks' ? '#FFFCF9' : '#F8FDF9'
+            {
+                borderTopColor: meal.type === 'dinner' || meal.type === 'snacks' ? (theme.mode === 'dark' ? '#8D6E63' : '#664E2D') : theme.primary,
+                backgroundColor: meal.type === 'dinner' || meal.type === 'snacks' ? (theme.mode === 'dark' ? '#3E2C18' : '#FFFCF9') : (theme.mode === 'dark' ? '#1E3326' : '#F8FDF9')
             }
         ]}>
             <TouchableOpacity
@@ -390,7 +427,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
                     }
                 }}
             >
-                <Ionicons name="trash-bin-outline" size={16} color="#664E2D" />
+                <Ionicons name="trash-bin-outline" size={16} color={theme.error} />
             </TouchableOpacity>
         </Animated.View>
       </PanGestureHandler>
@@ -469,7 +506,13 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
     });
 
     return (
-      <ScrollView style={styles.timelineContainer} contentContainerStyle={styles.timelineContent}>
+      <ScrollView
+        style={styles.timelineContainer} 
+        contentContainerStyle={styles.timelineContent}
+        refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} tintColor={COLORS.primary} />
+        }
+      >
         {hours.map(hour => (
           <View key={hour} style={styles.timeRow}>
             <View style={styles.timeLabelContainer}>
@@ -497,10 +540,10 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
 
   // State for FAB menu
   const [fabOpen, setFabOpen] = useState(false);
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
+        <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
         <Text>Loading your meal plans...</Text>
       </View>
     );
@@ -574,16 +617,22 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
         {selectedDate ? (
           renderTimeline()
         ) : (
-          <View style={styles.noDateSelected}>
-            <Text style={styles.noDateText}>Please select a date to view or add meals</Text>
-          </View>
+          <EmptyState 
+            icon="calendar-outline" 
+            title="No Date Selected" 
+            message="Please select a date above to view or add meals to your plan."
+            imageSource={null}
+          />
         )}
       </View>
 
       {/* FAB */}
       <TouchableOpacity 
         style={styles.fab}
-        onPress={() => setFabOpen(!fabOpen)}
+        onPress={() => {
+            HapticsService.light();
+            setFabOpen(!fabOpen);
+        }}
       >
         <Ionicons name={fabOpen ? "close-outline" : "add-outline"} size={30} color="#FFF" />
       </TouchableOpacity>
@@ -595,6 +644,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
                key={type}
                style={styles.fabMenuItem}
                onPress={() => {
+                 HapticsService.light();
                  setFabOpen(false);
                  showAddMealModal(type.toLowerCase());
                }}
@@ -699,20 +749,20 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'light grey'
+    backgroundColor: theme.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FBF0E9'
+    backgroundColor: theme.background,
   },
 
   calendarContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.surface,
     paddingTop: 10,
     paddingBottom: 20,
     borderBottomLeftRadius: 30,
@@ -732,7 +782,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: theme.text,
     marginBottom: 5,
   },
   monthSelector: {
@@ -742,7 +792,7 @@ const styles = StyleSheet.create({
   monthText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.text,
     marginRight: 5,
   },
   weekViewContainer: {
@@ -760,8 +810,8 @@ const styles = StyleSheet.create({
     width: 45,
   },
   selectedWeekDay: {
-    backgroundColor: '#48755C',
-    shadowColor: '#48755C',
+    backgroundColor: theme.primary,
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
@@ -769,35 +819,35 @@ const styles = StyleSheet.create({
   },
   todayWeekDay: {
     // borderWidth: 1,
-    // borderColor: '#48755C',
+    // borderColor: theme.primary,
   },
   weekDayName: {
     fontSize: 12,
-    color: '#999',
+    color: theme.textSecondary,
     marginBottom: 8,
     fontWeight: '600',
   },
   weekDayNumber: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#000',
+    color: theme.text,
   },
   selectedWeekDayText: {
-    color: '#FFFFFF',
+    color: theme.onPrimary,
   },
   weekDayDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#48755C',
+    backgroundColor: theme.primary,
     marginTop: 6,
   },
   selectedWeekDayDot: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.onPrimary,
   },
   mealPlanContainer: {
     flex: 1,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: theme.background,
   },
   timelineContainer: {
     flex: 1,
@@ -816,13 +866,13 @@ const styles = StyleSheet.create({
   },
   timeLabel: {
     fontSize: 12,
-    color: '#999',
+    color: theme.textSecondary,
     transform: [{ translateY: -8 }], // Align with the line
   },
   timeSlot: {
     flex: 1,
     borderTopWidth: 1,
-    borderTopColor: '#EFEFEF',
+    borderTopColor: theme.border,
     paddingBottom: 10,
   },
   timeLine: {
@@ -834,14 +884,11 @@ const styles = StyleSheet.create({
     // backgroundColor: '#EFEFEF',
   },
   eventCard: {
-    // backgroundColor: '#E8F5E9', // Overridden dynamically
     borderRadius: 6,
     padding: 12,
     marginTop: 5,
     marginBottom: 5,
     borderTopWidth: 3,
-    // borderLeftWidth: 4, // Removed
-    // borderLeftColor: '#48755C', // Removed
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -851,12 +898,12 @@ const styles = StyleSheet.create({
   eventTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#48755C',
+    color: theme.primary,
     marginBottom: 2,
   },
   eventTime: {
     fontSize: 12,
-    color: '#664E2D',
+    color: theme.textSecondary,
   },
   deleteIcon: {
     position: 'absolute',
@@ -875,7 +922,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#48755C',
+    backgroundColor: theme.primary,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
@@ -898,20 +945,20 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   fabMenuText: {
-    backgroundColor: '#FFF',
+    backgroundColor: theme.surface,
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 20,
     marginRight: 10,
     elevation: 2,
-    color: '#48755C',
+    color: theme.primary,
     fontWeight: '600',
   },
   fabMenuIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#48755C',
+    backgroundColor: theme.primary,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
@@ -920,11 +967,11 @@ const styles = StyleSheet.create({
   // Modal styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#FBF0E9', // Using background color from generated screen might be better, but this matches calendar theme
+    backgroundColor: theme.background,
   },
   modalScrollView: {
     flex: 1,
-    backgroundColor: '#FBF0E9',
+    backgroundColor: theme.background,
   },
 
   // Add Meal Modal
@@ -936,7 +983,7 @@ const styles = StyleSheet.create({
   },
   modalView: {
     width: '85%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.surface,
     borderRadius: 15,
     padding: 20,
     alignItems: 'center',
@@ -952,14 +999,14 @@ const styles = StyleSheet.create({
   modalText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#664E2D',
+    color: theme.text,
     marginBottom: 20,
     textAlign: 'center',
   },
   modalButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#48755C',
+    backgroundColor: theme.primary,
     width: '100%',
     padding: 15,
     borderRadius: 10,
@@ -967,16 +1014,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalButtonText: {
-    color: '#FFFFFF',
+    color: theme.onPrimary,
     fontWeight: 'bold',
     fontSize: 16,
     marginLeft: 10,
   },
   cancelButton: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: theme.mode === 'dark' ? '#333' : '#F0F0F0',
   },
   cancelButtonText: {
-    color: '#664E2D',
+    color: theme.textSecondary,
     fontWeight: 'bold',
     fontSize: 16,
   }

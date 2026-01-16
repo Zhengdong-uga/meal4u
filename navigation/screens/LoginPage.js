@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View,
     Text,
@@ -12,7 +12,8 @@ import {
     Platform,
     ScrollView,
     SafeAreaView,
-    Dimensions
+    Dimensions,
+    StatusBar
 } from 'react-native';
 import {
     getAuth,
@@ -27,10 +28,14 @@ import * as Google from 'expo-auth-session/providers/google';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { firebaseApp } from '../../backend/src/firebase';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../context/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
 
 export default function LoginPage() {
+    const { theme } = useTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
+    
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
@@ -189,6 +194,7 @@ export default function LoginPage() {
 
     return (
         <SafeAreaView style={styles.container}>
+            <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.keyboardAvoidingView}
@@ -200,7 +206,7 @@ export default function LoginPage() {
                     <View style={styles.headerContainer}>
                         {/* Replace with your actual logo */}
                         <View style={styles.logoContainer}>
-                            <Ionicons name="restaurant" size={50} color="#48755C" />
+                            <Ionicons name="restaurant" size={50} color={theme.primary} />
                         </View>
                         <Text style={styles.appName}>Meal4U</Text>
                         <Text style={styles.tagline}>Your personalized meal planning companion</Text>
@@ -211,19 +217,19 @@ export default function LoginPage() {
 
                         {isSignUp && (
                             <View style={styles.inputContainer}>
-                                <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+                                <Ionicons name="person-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
                                     placeholder="Full Name"
                                     value={name}
                                     onChangeText={setName}
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor={theme.textSecondary}
                                 />
                             </View>
                         )}
 
                         <View style={styles.inputContainer}>
-                            <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+                            <Ionicons name="mail-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
                             <TextInput
                                 style={styles.input}
                                 placeholder="Email Address"
@@ -231,19 +237,19 @@ export default function LoginPage() {
                                 onChangeText={setEmail}
                                 keyboardType="email-address"
                                 autoCapitalize="none"
-                                placeholderTextColor="#999"
+                                placeholderTextColor={theme.textSecondary}
                             />
                         </View>
 
                         <View style={styles.inputContainer}>
-                            <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                            <Ionicons name="lock-closed-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
                             <TextInput
                                 style={styles.input}
                                 placeholder="Password"
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry={!showPassword}
-                                placeholderTextColor="#999"
+                                placeholderTextColor={theme.textSecondary}
                             />
                             <TouchableOpacity
                                 style={styles.passwordVisibilityButton}
@@ -252,7 +258,7 @@ export default function LoginPage() {
                                 <Ionicons
                                     name={showPassword ? "eye-off-outline" : "eye-outline"}
                                     size={20}
-                                    color="#666"
+                                    color={theme.textSecondary}
                                 />
                             </TouchableOpacity>
                         </View>
@@ -323,10 +329,10 @@ export default function LoginPage() {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF'
+        backgroundColor: theme.background,
     },
     keyboardAvoidingView: {
         flex: 1,
@@ -344,7 +350,7 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: '#F0F8F0',
+        backgroundColor: theme.mode === 'dark' ? '#2C3E33' : '#F0F8F0',
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 16,
@@ -352,12 +358,12 @@ const styles = StyleSheet.create({
     appName: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#48755C',
+        color: theme.primary,
         marginBottom: 8,
     },
     tagline: {
         fontSize: 14,
-        color: '#666',
+        color: theme.textSecondary,
         textAlign: 'center',
     },
     formContainer: {
@@ -366,7 +372,7 @@ const styles = StyleSheet.create({
     formTitle: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#333',
+        color: theme.text,
         marginBottom: 24,
         textAlign: 'center',
     },
@@ -374,12 +380,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: theme.border,
         borderRadius: 12,
         paddingHorizontal: 16,
         marginBottom: 16,
         height: 56,
-        backgroundColor: '#F9F9F9',
+        backgroundColor: theme.mode === 'dark' ? '#333' : '#F9F9F9',
     },
     inputIcon: {
         marginRight: 12,
@@ -387,7 +393,7 @@ const styles = StyleSheet.create({
     input: {
         flex: 1,
         fontSize: 16,
-        color: '#333',
+        color: theme.text,
     },
     passwordVisibilityButton: {
         padding: 8,
@@ -397,12 +403,12 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     forgotPasswordText: {
-        color: '#48755C',
+        color: theme.primary,
         fontSize: 14,
         fontWeight: '500',
     },
     mainButton: {
-        backgroundColor: '#48755C',
+        backgroundColor: theme.primary,
         borderRadius: 12,
         height: 56,
         justifyContent: 'center',
@@ -415,7 +421,7 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     mainButtonText: {
-        color: '#FFFFFF',
+        color: theme.onPrimary,
         fontSize: 16,
         fontWeight: 'bold',
     },
@@ -430,11 +436,11 @@ const styles = StyleSheet.create({
     divider: {
         flex: 1,
         height: 1,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: theme.border,
     },
     dividerText: {
         paddingHorizontal: 16,
-        color: '#999',
+        color: theme.textSecondary,
         fontSize: 14,
         fontWeight: '500',
     },
@@ -468,10 +474,10 @@ const styles = StyleSheet.create({
     },
     toggleText: {
         fontSize: 14,
-        color: '#666',
+        color: theme.textSecondary,
     },
     toggleTextHighlight: {
-        color: '#48755C',
+        color: theme.primary,
         fontWeight: 'bold',
     },
 });

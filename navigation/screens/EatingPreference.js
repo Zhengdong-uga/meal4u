@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { doc, getDoc, updateDoc, getFirestore } from 'firebase/firestore';
 import { auth } from '../../backend/src/firebase';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function EatingPreference({ navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [preferences, setPreferences] = useState({
     eatingGoals: [],
     dietTypes: [],
@@ -25,8 +29,6 @@ export default function EatingPreference({ navigation }) {
   const [isEatingGoalsModalVisible, setEatingGoalsModalVisible] = useState(false);
   const [isDietTypesModalVisible, setDietTypesModalVisible] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
-
-  
 
   useEffect(() => {
     loadUserPreferences();
@@ -109,6 +111,7 @@ export default function EatingPreference({ navigation }) {
           <TextInput
             style={styles.ingredientInput}
             placeholder={`Add ${title}`}
+            placeholderTextColor={theme.textSecondary}
             value={input}
             onChangeText={setInput}
             onSubmitEditing={handleAddValue}
@@ -168,7 +171,7 @@ export default function EatingPreference({ navigation }) {
                 <TouchableOpacity
                   style={
                     tempItems.includes(item)
-                      ? [styles.optionItem, { backgroundColor: '#d1f0d1' }]
+                      ? [styles.optionItem, styles.optionItemSelected]
                       : styles.optionItem
                   }
                   onPress={() => toggleItem(item)} // Toggle selection
@@ -197,7 +200,7 @@ export default function EatingPreference({ navigation }) {
         <Text style={styles.preferenceTitle}>{title}</Text>
         <Text style={styles.preferenceValue}>{Array.isArray(value) && value.length > 0 ? value.join(', ') : 'Select'}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={24} color="#000" />
+      <Ionicons name="chevron-forward" size={24} color={theme.textSecondary} />
     </TouchableOpacity>
   );
 
@@ -208,7 +211,7 @@ export default function EatingPreference({ navigation }) {
           style={styles.backButtonCompact}
           onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Profile' }] })}
         >
-          <Ionicons name="arrow-back" size={24} color="#000" />
+          <Ionicons name="arrow-back" size={24} color={theme.primary} />
         </TouchableOpacity>
       </View>
 
@@ -273,7 +276,7 @@ export default function EatingPreference({ navigation }) {
       >
         <View style={styles.successModalOverlay}>
           <View style={styles.successModalContainer}>
-            <Ionicons name="checkmark-circle" size={60} color="#48755C" />
+            <Ionicons name="checkmark-circle" size={60} color={theme.primary} />
             <Text style={styles.successModalText}>Preferences Updated Successfully!</Text>
           </View>
         </View>
@@ -300,10 +303,10 @@ export default function EatingPreference({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.background,
   },
   headerCompact: {
     flexDirection: 'row',
@@ -333,7 +336,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: theme.border,
     paddingHorizontal: 20,
   },
   preferenceContent: {
@@ -343,58 +346,61 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 4,
-    color: '#664E2D',
+    color: theme.primary,
   },
   preferenceValue: {
     fontSize: 14,
-    color: '#666',
+    color: theme.textSecondary,
   },
   ingredientInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderColor: '#ccc',
+    borderColor: theme.border,
     borderWidth: 1,
     borderRadius: 10,
     padding: 10,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: theme.surface,
   },
   ingredientInput: {
     flex: 1,
     padding: 10,
     marginRight: 10,
+    color: theme.text,
   },
   addButton: {
-    backgroundColor: '#B8CCBA',
+    backgroundColor: theme.secondary,
     paddingHorizontal: 15,
     paddingVertical: 10,
     borderRadius: 10,
   },
   addButtonText: {
-    color: '#48755C',
+    color: theme.primary,
     fontSize: 14,
     fontWeight: 'bold',
   },
   tag: {
-    backgroundColor: '#ddd',
+    backgroundColor: theme.surface,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 15,
     marginRight: 10,
     marginTop: 10,
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   tagText: {
     fontSize: 14,
-    color: '#000',
+    color: theme.text,
   },
   updateButton: {
-    backgroundColor: '#48755C',
+    backgroundColor: theme.primary,
     margin: 30,
     padding: 16,
     borderRadius: 25,
     alignItems: 'center',
   },
   updateButtonText: {
-    color: '#fff',
+    color: theme.onPrimary,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -404,7 +410,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -413,15 +419,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 20,
+    color: theme.text,
   },
   optionItem: {
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: theme.border,
+  },
+  optionItemSelected: {
+    backgroundColor: theme.mode === 'dark' ? '#1E3326' : '#d1f0d1',
   },
   optionText: {
     fontSize: 16,
     textAlign: 'center',
+    color: theme.text,
   },
   modalActions: {
     flexDirection: 'row',
@@ -436,7 +447,7 @@ const styles = StyleSheet.create({
   modalButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: theme.primary,
   },
   successModalOverlay: {
     flex: 1,
@@ -445,7 +456,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   successModalContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface,
     padding: 20,
     borderRadius: 10,
     alignItems: 'center',
@@ -454,7 +465,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#48755C',
+    color: theme.primary,
   },
-  
 });

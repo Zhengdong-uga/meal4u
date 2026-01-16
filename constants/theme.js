@@ -11,6 +11,25 @@ export const COLORS = {
   success: '#10B981',
 };
 
+export const LIGHT_THEME = {
+  ...COLORS,
+  mode: 'light',
+};
+
+export const DARK_THEME = {
+  primary: '#4F7A60', // Lighter Green for dark mode
+  onPrimary: '#FFFFFF',
+  secondary: '#2C2C2C', // Dark gray accent
+  background: '#121212', // Dark background
+  surface: '#1E1E1E', // Darker gray cards
+  text: '#E0E0E0', // Light gray/white text
+  textSecondary: '#A0A0A0', // Dimmer gray text
+  border: '#333333',
+  error: '#FF6B6B',
+  success: '#34D399',
+  mode: 'dark',
+};
+
 export const SPACING = {
   xs: 4,
   s: 8,

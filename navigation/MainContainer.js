@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import { onAuthStateChanged, getAuth } from 'firebase/auth';
 import { doc, getDoc, getFirestore } from 'firebase/firestore';
 import firebaseApp from '../backend/src/firebase';
+import { useTheme } from '../context/ThemeContext';
 
 // Screens
 import CalendarScreen from './screens/CalendarScreen';
@@ -21,6 +22,7 @@ import GeneratedRecipeScreen from './screens/GeneratedRecipeScreen';
 import LoginPage from './screens/LoginPage';
 import EatingPreferenceScreen from './screens/EatingPreference';
 import OnboardingQuestionnaire from './screens/OnboardingQuestionnaire';
+import SettingsScreen from './screens/SettingsScreen';
 
 // Screen names
 const loginName = "Login";
@@ -63,10 +65,12 @@ const screenOptions = {
 };
 
 function TabNavigator() {
+    const { theme } = useTheme();
     return (
         <Tab.Navigator
             initialRouteName={homeName}
             screenOptions={({ route }) => ({
+                headerShown: false,
                 tabBarIcon: ({ focused, color, size = 24 }) => {
                     let iconName;
                     let rn = route.name;
@@ -83,15 +87,17 @@ function TabNavigator() {
 
                     return <Ionicons name={iconName} size={Number(size)} color={color} />;
                 },
-                tabBarActiveTintColor: '#664E2D',
-                tabBarInactiveTintColor: 'grey',
+                tabBarActiveTintColor: theme.primary,
+                tabBarInactiveTintColor: theme.textSecondary,
                 tabBarLabelStyle: { fontSize: 14 },
                 tabBarStyle: { 
                   height: 80,
+                  backgroundColor: theme.surface,
+                  borderTopColor: theme.border,
                   // Add shadow for iOS
                   ...Platform.select({
                     ios: {
-                      shadowColor: '#000',
+                      shadowColor: theme.mode === 'dark' ? '#000' : '#000',
                       shadowOffset: { width: 0, height: -2 },
                       shadowOpacity: 0.1,
                       shadowRadius: 4,
@@ -199,7 +205,10 @@ function MainContainer() {
             />
           ) : (
             // Step 3: Logged in and has preferences - show main app
-            <Stack.Screen name="Main" component={TabNavigator} />
+            <>
+              <Stack.Screen name="Main" component={TabNavigator} />
+              <Stack.Screen name="Settings" component={SettingsScreen} />
+            </>
           )}
         </Stack.Navigator>
       </NavigationContainer>

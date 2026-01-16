@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
@@ -14,12 +14,15 @@ import {
     Linking,
     PanResponder,
     Animated,
-    Dimensions
+    Dimensions,
+    RefreshControl
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { getAuth, signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../../backend/src/firebase'; // Remove firestore import from here
 import { doc, getDoc, setDoc, updateDoc, getFirestore } from 'firebase/firestore';
+import HapticsService from '../../utils/haptics';
+import { useTheme } from '../../context/ThemeContext';
 // Import the saved recipes mockup data for Recipe Gallery
 import { savedRecipes as mockSavedRecipes } from '../../data/savedRecipeData.js';
 
@@ -29,6 +32,9 @@ const { height } = Dimensions.get('window');
 const firestore = getFirestore();
 
 export default function ProfileScreen({ navigation }) {
+    const { theme } = useTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     // No longer need state for showing all recipes since we always show just 2
     const [modalVisible, setModalVisible] = useState(false);
     const [avatarModalVisible, setAvatarModalVisible] = useState(false);
@@ -39,6 +45,7 @@ export default function ProfileScreen({ navigation }) {
     // We'll use mockup data for recipes display
     const [mealsGeneratedScore, setMealsGeneratedScore] = useState(0);
     const [mealsImplementedScore, setMealsImplementedScore] = useState(0);
+    const [refreshing, setRefreshing] = useState(false);
 
     // Modal animation
     const panY = useRef(new Animated.Value(height)).current;
@@ -145,8 +152,16 @@ export default function ProfileScreen({ navigation }) {
             }
         } catch (error) {
             console.error('Error fetching user from Firebase Auth:', error);
+        } finally {
+            setRefreshing(false);
         }
     };
+
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        HapticsService.light();
+        fetchUserStats();
+    }, []);
 
     useEffect(() => {
         // Fetch user stats when component mounts
@@ -258,10 +273,29 @@ export default function ProfileScreen({ navigation }) {
         }
     };
 
+    const handleSettingsPress = () => {
+        navigation.navigate('Settings');
+    };
+
     return (
         <SafeAreaView style={styles.safeArea}>
-            <StatusBar barStyle="dark-content" />
-            <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+            <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
+            <ScrollView 
+                style={styles.container} 
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.primary]} tintColor={theme.primary} />
+                }
+            >
+                <View style={styles.headerContainer}>
+                    <TouchableOpacity 
+                        style={styles.settingsButton} 
+                        onPress={handleSettingsPress}
+                    >
+                        <Icon name="settings-outline" size={24} color={theme.text} />
+                    </TouchableOpacity>
+                </View>
+
                 <View style={styles.profileSection}>
                     <TouchableOpacity
                         style={styles.avatarContainer}
@@ -288,8 +322,8 @@ export default function ProfileScreen({ navigation }) {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Your Stats</Text>
                     <View style={styles.achievementsContainer}>
-                        <Achievement color="#F2F2F2" value={mealsGeneratedScore} label="Meals Generated" />
-                        <Achievement color="#F2F2F2" value={mealsImplementedScore} label="Implemented" />
+                        <Achievement color={theme.mode === 'dark' ? '#333' : '#F2F2F2'} value={mealsGeneratedScore} label="Meals Generated" />
+                        <Achievement color={theme.mode === 'dark' ? '#333' : '#F2F2F2'} value={mealsImplementedScore} label="Implemented" />
                     </View>
                 </View>
 
@@ -309,7 +343,7 @@ export default function ProfileScreen({ navigation }) {
                         />
                     ) : (
                         <View style={styles.emptyRecipesContainer}>
-                            <Icon name="bookmark-outline" size={40} color="#CCCCCC" />
+                            <Icon name="bookmark-outline" size={40} color={theme.textSecondary} />
                             <Text style={styles.emptyRecipesText}>No saved recipes yet</Text>
                             <TouchableOpacity
                                 style={styles.addRecipeButton}
@@ -349,7 +383,7 @@ export default function ProfileScreen({ navigation }) {
                             <View style={styles.modalHeader}>
                                 <Text style={styles.modalTitle}>Manage account</Text>
                                 <TouchableOpacity onPress={closeModals}>
-                                    <Icon name="close" size={24} color="#333" />
+                                    <Icon name="close" size={24} color={theme.text} />
                                 </TouchableOpacity>
                             </View>
 
@@ -418,7 +452,7 @@ export default function ProfileScreen({ navigation }) {
                             <View style={styles.modalHeader}>
                                 <Text style={styles.modalTitle}>Choose your avatar</Text>
                                 <TouchableOpacity onPress={closeModals}>
-                                    <Icon name="close" size={24} color="#333" />
+                                    <Icon name="close" size={24} color={theme.text} />
                                 </TouchableOpacity>
                             </View>
 
@@ -436,7 +470,7 @@ export default function ProfileScreen({ navigation }) {
                                         <Text style={styles.avatarName}>{avatar.name}</Text>
                                         {userAvatar === avatar.id && (
                                             <View style={styles.selectedIndicator}>
-                                                <Icon name="checkmark-circle" size={24} color="#48755C" />
+                                                <Icon name="checkmark-circle" size={24} color={theme.primary} />
                                             </View>
                                         )}
                                     </TouchableOpacity>
@@ -450,22 +484,32 @@ export default function ProfileScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.background,
     },
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.background,
+    },
+    headerContainer: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        paddingHorizontal: 20,
+        paddingTop: 10,
+        backgroundColor: theme.surface,
+    },
+    settingsButton: {
+        padding: 8,
     },
     profileSection: {
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface,
         paddingVertical: 40,
         paddingHorizontal: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#EEEEEE',
+        borderBottomColor: theme.border,
     },
     avatarContainer: {
         marginBottom: 16,
@@ -475,52 +519,52 @@ const styles = StyleSheet.create({
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: '#EEEEEE',
+        backgroundColor: theme.mode === 'dark' ? '#333' : '#EEEEEE',
     },
     cameraIconContainer: {
         position: 'absolute',
         bottom: 0,
         right: 0,
-        backgroundColor: '#48755C',
+        backgroundColor: theme.primary,
         borderRadius: 15,
         width: 30,
         height: 30,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: '#FFFFFF',
+        borderColor: theme.surface,
     },
     name: {
         fontSize: 24,
         fontWeight: '600',
         marginBottom: 4,
-        color: '#000000',
+        color: theme.text,
     },
     email: {
         fontSize: 14,
-        color: '#666666',
+        color: theme.textSecondary,
         marginBottom: 20,
     },
     editButton: {
-        backgroundColor: '#48755C',
+        backgroundColor: theme.primary,
         paddingHorizontal: 24,
         paddingVertical: 12,
         borderRadius: 24,
     },
     editButtonText: {
-        color: '#FFFFFF',
+        color: theme.onPrimary,
         fontSize: 14,
         fontWeight: '600',
     },
     section: {
         padding: 20,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface,
     },
     sectionTitle: {
         fontSize: 20,
         fontWeight: '600',
         marginBottom: 16,
-        color: '#49351C',
+        color: theme.primary,
     },
     achievementsContainer: {
         flexDirection: 'row',
@@ -535,17 +579,17 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: 'flex-start',
         borderWidth: 1,
-        borderColor: '#EEEEEE',
+        borderColor: theme.border,
     },
     achievementValue: {
         fontSize: 28,
         fontWeight: '700',
-        color: '#000000',
+        color: theme.text,
         marginBottom: 4,
     },
     achievementLabel: {
         fontSize: 14,
-        color: '#666666',
+        color: theme.textSecondary,
     },
     recipeTitleRow: {
         flexDirection: 'row',
@@ -555,7 +599,7 @@ const styles = StyleSheet.create({
     },
     recipeSection: {
         padding: 20,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface,
         paddingBottom: 10,
     },
     recipeItemContainer: {
@@ -563,12 +607,14 @@ const styles = StyleSheet.create({
         margin: 6,
         borderRadius: 12,
         overflow: 'hidden',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1,
         shadowRadius: 2,
         elevation: 2,
+        borderWidth: 1,
+        borderColor: theme.border,
     },
     recipeImage: {
         width: '100%',
@@ -580,11 +626,11 @@ const styles = StyleSheet.create({
         padding: 10,
         fontSize: 14,
         fontWeight: '500',
-        color: '#000000',
+        color: theme.text,
     },
     seeAllText: {
         fontSize: 14,
-        color: '#48755C',
+        color: theme.primary,
         fontWeight: '500',
         marginRight: 4,
     },
@@ -596,7 +642,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     emptyRecipesContainer: {
-        backgroundColor: '#F8F8F8',
+        backgroundColor: theme.background,
         borderRadius: 12,
         padding: 30,
         alignItems: 'center',
@@ -604,30 +650,30 @@ const styles = StyleSheet.create({
     },
     emptyRecipesText: {
         fontSize: 16,
-        color: '#666666',
+        color: theme.textSecondary,
         marginTop: 10,
         marginBottom: 20,
     },
     addRecipeButton: {
-        backgroundColor: '#48755C',
+        backgroundColor: theme.primary,
         paddingHorizontal: 20,
         paddingVertical: 10,
         borderRadius: 20,
     },
     addRecipeButtonText: {
-        color: '#FFFFFF',
+        color: theme.onPrimary,
         fontWeight: '600',
     },
     browseAllButton: {
         borderWidth: 1,
-        borderColor: '#48755C',
+        borderColor: theme.primary,
         borderRadius: 12,
         padding: 14,
         alignItems: 'center',
         marginTop: 16,
     },
     browseAllText: {
-        color: '#48755C',
+        color: theme.primary,
         fontWeight: '600',
         fontSize: 16,
     },
@@ -639,7 +685,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: 'white',
+        backgroundColor: theme.surface,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         paddingHorizontal: 20,
@@ -655,10 +701,11 @@ const styles = StyleSheet.create({
     modalDragIndicator: {
         width: 40,
         height: 5,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: theme.textSecondary,
         borderRadius: 2.5,
         alignSelf: 'center',
         marginBottom: 16,
+        opacity: 0.3,
     },
     modalHeader: {
         flexDirection: 'row',
@@ -670,7 +717,7 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#333',
+        color: theme.text,
     },
     modalScrollView: {
         maxHeight: '100%',
@@ -681,7 +728,7 @@ const styles = StyleSheet.create({
     modalSectionTitle: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#49351C',
+        color: theme.primary,
         marginBottom: 12,
         letterSpacing: 0.5,
     },
@@ -690,10 +737,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         borderRadius: 12,
         marginVertical: 4,
-        backgroundColor: '#F8F8F8',
+        backgroundColor: theme.mode === 'dark' ? '#333' : '#F8F8F8',
     },
     modalItemText: {
-        color: '#333',
+        color: theme.text,
         fontSize: 16,
         fontWeight: '500',
     },
@@ -711,11 +758,11 @@ const styles = StyleSheet.create({
         padding: 10,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#EEEEEE',
+        borderColor: theme.border,
     },
     selectedAvatarOption: {
-        borderColor: '#48755C',
-        backgroundColor: '#F0F9F4',
+        borderColor: theme.primary,
+        backgroundColor: theme.mode === 'dark' ? '#2C3E33' : '#F0F9F4',
     },
     avatarOptionImage: {
         width: 70,
@@ -725,7 +772,7 @@ const styles = StyleSheet.create({
     },
     avatarName: {
         fontSize: 12,
-        color: '#333333',
+        color: theme.text,
         textAlign: 'center',
         fontWeight: '500',
     },
@@ -735,7 +782,7 @@ const styles = StyleSheet.create({
         right: 5,
     },
     logoutButton: {
-        backgroundColor: '#F0DED0',
+        backgroundColor: theme.secondary,
         paddingVertical: 16,
         paddingHorizontal: 40,
         borderRadius: 24,
@@ -746,7 +793,7 @@ const styles = StyleSheet.create({
         width: '80%',
     },
     logoutButtonText: {
-        color: '#49351C',
+        color: theme.primary,
         fontWeight: '700',
         fontSize: 16,
     },

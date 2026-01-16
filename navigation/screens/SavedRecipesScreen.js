@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
@@ -9,16 +9,22 @@ import {
     TextInput,
     StatusBar,
     ActivityIndicator,
-    Alert
+    Alert,
+    RefreshControl,
+    Share
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import EmptyState from '../../components/EmptyState';
+import SkeletonLoader from '../../components/SkeletonLoader';
+import HapticsService from '../../utils/haptics';
+import { useTheme } from '../../context/ThemeContext';
 // Keep the import for fallback purposes
 import { savedRecipes } from '../../data/savedRecipeData.js';
 import { auth } from '../../backend/src/firebase';
 import { doc, getDoc, updateDoc, getFirestore, collection, getDocs, addDoc, query, where } from 'firebase/firestore';
 
 // RecipeCard Component (Keep this unchanged)
-const RecipeCard = ({ recipe, onPress, isSelectionMode = false, onSelect = null }) => {
+const RecipeCard = ({ recipe, onPress, isSelectionMode = false, onSelect = null, theme }) => {
   // Extract data from recipe
   const { 
     title, 
@@ -40,7 +46,7 @@ const RecipeCard = ({ recipe, onPress, isSelectionMode = false, onSelect = null 
     
     // Generate pastel colors
     const h = hash % 360;
-    return `hsl(${h}, 70%, 90%)`;
+    return `hsl(${h}, 70%, ${theme.mode === 'dark' ? '30%' : '90%'})`;
   };
 
   const backgroundColor = generatePastelColor(recipeName);
@@ -66,6 +72,8 @@ const RecipeCard = ({ recipe, onPress, isSelectionMode = false, onSelect = null 
     return cat.length > 15 ? cat.substring(0, 12) + '...' : cat;
   };
 
+  const styles = createCardStyles(theme);
+
   return (
     <TouchableOpacity 
       style={[styles.cardContainer, { borderLeftColor: backgroundColor }]} 
@@ -73,7 +81,7 @@ const RecipeCard = ({ recipe, onPress, isSelectionMode = false, onSelect = null 
       activeOpacity={0.7}
     >
       <View style={[styles.iconContainer, { backgroundColor }]}>
-        <Icon name={getCategoryIcon()} size={24} color="#48755C" />
+        <Icon name={getCategoryIcon()} size={24} color={theme.primary} />
       </View>
       
       <View style={styles.contentContainer}>
@@ -82,14 +90,14 @@ const RecipeCard = ({ recipe, onPress, isSelectionMode = false, onSelect = null 
         <View style={styles.detailsContainer}>
           {time && (
             <View style={styles.detailItem}>
-              <Icon name="time-outline" size={14} color="#666666" />
+              <Icon name="time-outline" size={14} color={theme.textSecondary} />
               <Text style={styles.detailText}>{time}</Text>
             </View>
           )}
           
           {difficulty && (
             <View style={styles.detailItem}>
-              <Icon name="bar-chart-outline" size={14} color="#666666" />
+              <Icon name="bar-chart-outline" size={14} color={theme.textSecondary} />
               <Text style={styles.detailText}>{difficulty}</Text>
             </View>
           )}
@@ -111,12 +119,14 @@ const RecipeCard = ({ recipe, onPress, isSelectionMode = false, onSelect = null 
         </TouchableOpacity>
       )}
       
-      <Icon name="chevron-forward-outline" size={20} color="#CCCCCC" style={styles.arrowIcon} />
+      <Icon name="chevron-forward-outline" size={20} color={theme.textSecondary} style={styles.arrowIcon} />
     </TouchableOpacity>
   );
 };
 
 export default function SavedRecipesScreen({ navigation, route }) {
+    const { theme } = useTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
     // Initialize Firestore
     const db = getFirestore();
     
@@ -124,6 +134,7 @@ export default function SavedRecipesScreen({ navigation, route }) {
     const [filteredRecipes, setFilteredRecipes] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true); // Start with loading true
+    const [refreshing, setRefreshing] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState('All');
 
     // Categories for filtering
@@ -137,8 +148,8 @@ export default function SavedRecipesScreen({ navigation, route }) {
     const fromProfileScreen = route.params?.fromScreen === 'Profile';
 
     // Function to fetch user's saved recipes from Firestore
-    const fetchSavedRecipes = async () => {
-        setLoading(true);
+    const fetchSavedRecipes = async (isRefreshing = false) => {
+        if (!isRefreshing) setLoading(true);
         try {
             // Get current user
             const currentUser = auth.currentUser;
@@ -188,6 +199,7 @@ export default function SavedRecipesScreen({ navigation, route }) {
             }
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
@@ -314,6 +326,7 @@ export default function SavedRecipesScreen({ navigation, route }) {
     }, [searchQuery, selectedCategory, recipes]);
 
     const handleRecipeSelect = async (recipe) => {
+        await HapticsService.light();
         if (isSelectionMode) {
             // Return selected recipe to Calendar
             navigation.navigate('Calendar', { selectedRecipe: recipe });
@@ -326,10 +339,31 @@ export default function SavedRecipesScreen({ navigation, route }) {
         }
     };
 
+    const handleShareRecipe = async (recipe) => {
+        HapticsService.light();
+        try {
+            const message = `Check out this recipe for ${recipe.name || recipe.title}!\n\nIngredients:\n${(recipe.ingredients || []).join('\n')}\n\nInstructions:\n${(recipe.instructions || []).join('\n')}`;
+            
+            const result = await Share.share({
+                message,
+                title: recipe.name || recipe.title,
+            });
+        } catch (error) {
+            Alert.alert(error.message);
+        }
+    };
+
     // Navigate to the Meal Generating screen instead of AI
     const goToMealGenerating = () => {
+        HapticsService.light();
         navigation.navigate('Meal Generating');
     };
+
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        HapticsService.light();
+        fetchSavedRecipes(true);
+    }, []);
 
     const renderRecipeItem = ({ item }) => (
         <RecipeCard
@@ -337,6 +371,8 @@ export default function SavedRecipesScreen({ navigation, route }) {
             onPress={() => handleRecipeSelect(item)}
             isSelectionMode={isSelectionMode}
             onSelect={() => handleRecipeSelect(item)}
+            onShare={() => handleShareRecipe(item)}
+            theme={theme}
         />
     );
 
@@ -393,10 +429,9 @@ export default function SavedRecipesScreen({ navigation, route }) {
                     contentContainerStyle={styles.categoryListContent}
                 />
 
-                {loading ? (
+                {loading && !refreshing ? (
                     <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color="#48755C" />
-                        <Text style={styles.loadingText}>Loading recipes...</Text>
+                        <SkeletonLoader type="list" />
                     </View>
                 ) : filteredRecipes.length > 0 ? (
                     <FlatList
@@ -405,38 +440,39 @@ export default function SavedRecipesScreen({ navigation, route }) {
                         keyExtractor={(item, index) => `${item.id || item.name || 'recipe'}-${index}`}
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={styles.recipeListContent}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                            />
+                        }
                     />
                 ) : (
-                    <View style={styles.emptyContainer}>
-                        <Icon name="book-outline" size={60} color="#CCC" />
-                        <Text style={styles.emptyTitle}>No recipes found</Text>
-                        <Text style={styles.emptyText}>
-                            {searchQuery ?
-                                "Try a different search term or category" :
-                                "Save some recipes to see them here"}
-                        </Text>
-                        <TouchableOpacity
-                            style={styles.createButton}
-                            onPress={goToMealGenerating}
-                        >
-                            <Text style={styles.createButtonText}>Create New Recipe</Text>
-                        </TouchableOpacity>
-                    </View>
+                    <EmptyState
+                        icon="book-outline"
+                        title="No recipes found"
+                        message={searchQuery ? 
+                            "Try a different search term or category" : 
+                            "Save some recipes to see them here"
+                        }
+                        actionLabel="Create New Recipe"
+                        onAction={goToMealGenerating}
+                    />
                 )}
             </View>
         </SafeAreaView>
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     // Original SavedRecipesScreen styles
     safeArea: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.background,
     },
     container: {
         flex: 1,
-        backgroundColor: '#FAFAFA',
+        backgroundColor: theme.background,
     },
     headerButton: {
         padding: 8,
@@ -444,13 +480,13 @@ const styles = StyleSheet.create({
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface,
         borderRadius: 10,
         margin: 16,
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderWidth: 1,
-        borderColor: '#EEEEEE',
+        borderColor: theme.border,
     },
     searchIcon: {
         marginRight: 8,
@@ -459,7 +495,7 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 40,
         fontSize: 16,
-        color: '#000000',
+        color: theme.text,
     },
     categoryList: {
         maxHeight: 50,
@@ -473,17 +509,17 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         borderRadius: 10,
         marginRight: 8,
-        backgroundColor: '#F0F0F0',
+        backgroundColor: theme.mode === 'dark' ? '#333' : '#F0F0F0',
     },
     categoryButtonActive: {
-        backgroundColor: '#48755C',
+        backgroundColor: theme.primary,
     },
     categoryButtonText: {
-        color: '#666666',
+        color: theme.textSecondary,
         fontWeight: '500',
     },
     categoryButtonTextActive: {
-        color: '#FFFFFF',
+        color: theme.onPrimary,
     },
     recipeListContent: {
         padding: 16,
@@ -496,7 +532,7 @@ const styles = StyleSheet.create({
     },
     loadingText: {
         marginTop: 12,
-        color: '#666666',
+        color: theme.textSecondary,
     },
     emptyContainer: {
         flex: 1,
@@ -508,23 +544,23 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: 'bold',
         marginTop: 16,
-        color: '#333333',
+        color: theme.text,
     },
     emptyText: {
         fontSize: 16,
-        color: '#666666',
+        color: theme.textSecondary,
         textAlign: 'center',
         marginTop: 8,
         marginBottom: 24,
     },
     createButton: {
-        backgroundColor: '#48755C',
+        backgroundColor: theme.primary,
         paddingHorizontal: 24,
         paddingVertical: 12,
         borderRadius: 24,
     },
     createButtonText: {
-        color: '#FFFFFF',
+        color: theme.onPrimary,
         fontWeight: 'bold',
         fontSize: 16,
     },
@@ -532,7 +568,7 @@ const styles = StyleSheet.create({
     // RecipeCard component styles
     cardContainer: {
         flexDirection: 'row',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface,
         borderRadius: 12,
         marginVertical: 8,
         marginHorizontal: 4,
@@ -543,7 +579,7 @@ const styles = StyleSheet.create({
         shadowRadius: 3,
         elevation: 2,
         borderLeftWidth: 6,
-        borderLeftColor: '#48755C',
+        borderLeftColor: theme.primary,
         alignItems: 'center',
     },
     iconContainer: {
@@ -561,7 +597,7 @@ const styles = StyleSheet.create({
     cardTitle: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#49351C',
+        color: theme.text,
         marginBottom: 6,
     },
     detailsContainer: {
@@ -576,11 +612,11 @@ const styles = StyleSheet.create({
     },
     detailText: {
         fontSize: 12,
-        color: '#666666',
+        color: theme.textSecondary,
         marginLeft: 4,
     },
     categoryBadge: {
-        backgroundColor: '#F0DED0',
+        backgroundColor: theme.mode === 'dark' ? '#1E3326' : '#F0DED0',
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 10,
@@ -588,7 +624,7 @@ const styles = StyleSheet.create({
     },
     categoryBadgeText: {
         fontSize: 10,
-        color: '#664E2D',
+        color: theme.primary,
         fontWeight: '500',
         maxWidth: 120,
     },
@@ -596,14 +632,94 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     selectButton: {
-        backgroundColor: '#48755C',
+        backgroundColor: theme.primary,
         paddingVertical: 6,
         paddingHorizontal: 12,
         borderRadius: 16,
         marginLeft: 8,
     },
     selectButtonText: {
-        color: '#FFFFFF',
+        color: theme.onPrimary,
+        fontWeight: 'bold',
+        fontSize: 12,
+    },
+});
+
+const createCardStyles = (theme) => StyleSheet.create({
+    cardContainer: {
+        flexDirection: 'row',
+        backgroundColor: theme.surface,
+        borderRadius: 12,
+        marginVertical: 8,
+        marginHorizontal: 4,
+        padding: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
+        borderLeftWidth: 6,
+        borderLeftColor: theme.primary,
+        alignItems: 'center',
+    },
+    iconContainer: {
+        width: 46,
+        height: 46,
+        borderRadius: 23,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    contentContainer: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    cardTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: theme.text,
+        marginBottom: 6,
+    },
+    detailsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+    },
+    detailItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    detailText: {
+        fontSize: 12,
+        color: theme.textSecondary,
+        marginLeft: 4,
+    },
+    categoryBadge: {
+        backgroundColor: theme.mode === 'dark' ? '#1E3326' : '#F0DED0',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 10,
+        marginTop: 4,
+    },
+    categoryBadgeText: {
+        fontSize: 10,
+        color: theme.primary,
+        fontWeight: '500',
+        maxWidth: 120,
+    },
+    arrowIcon: {
+        marginLeft: 8,
+    },
+    selectButton: {
+        backgroundColor: theme.primary,
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 16,
+        marginLeft: 8,
+    },
+    selectButtonText: {
+        color: theme.onPrimary,
         fontWeight: 'bold',
         fontSize: 12,
     },

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../context/ThemeContext';
 
 const GOAL_OPTIONS = [
   {
@@ -42,6 +43,8 @@ const GOAL_OPTIONS = [
 ];
 
 export default function GoalsStep({ selectedGoals, onSelectGoals }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   
   const toggleGoal = (goalId) => {
     if (selectedGoals.includes(goalId)) {
@@ -74,7 +77,7 @@ export default function GoalsStep({ selectedGoals, onSelectGoals }) {
             
             {selectedGoals.includes(goal.id) && (
               <View style={styles.checkmark}>
-                <Ionicons name="checkmark-circle" size={24} color="#48755C" />
+                <Ionicons name="checkmark-circle" size={24} color={theme.primary} />
               </View>
             )}
           </TouchableOpacity>
@@ -88,25 +91,26 @@ export default function GoalsStep({ selectedGoals, onSelectGoals }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: theme.background,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#000000',
+    color: theme.text,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: theme.text,
     marginBottom: 8,
   },
   selectAllText: {
     fontSize: 14,
-    color: '#666666',
+    color: theme.textSecondary,
     marginBottom: 20,
   },
   optionsContainer: {
@@ -116,15 +120,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: theme.surface,
     borderRadius: 10,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: theme.border,
   },
   selectedOption: {
-    borderColor: '#48755C',
-    backgroundColor: '#F0F8F0',
+    borderColor: theme.primary,
+    backgroundColor: theme.mode === 'dark' ? '#1E3326' : '#F0F8F0',
   },
   iconContainer: {
     width: 40,
@@ -137,7 +141,7 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333333',
+    color: theme.text,
     flex: 1,
   },
   checkmark: {
@@ -146,7 +150,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
-    color: '#999999',
+    color: theme.textSecondary,
     textAlign: 'center',
     marginTop: 20,
     marginBottom: 20,

@@ -25,6 +25,7 @@ import { auth } from '../../backend/src/firebase';
 import { doc, getDoc, updateDoc, getFirestore } from 'firebase/firestore';
 import { ask_gemini } from '../../backend/api.js';
 import LottieView from 'lottie-react-native';
+import HapticsService from '../../utils/haptics';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android') {
@@ -35,6 +36,9 @@ if (Platform.OS === 'android') {
 
 // Loading Animation Modal Component
 const LoadingModal = ({ visible, mealType }) => {
+    const { theme } = useTheme();
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
+
     if (!visible) return null;
 
     // Determine animation source and loading text based on meal type
@@ -146,7 +150,11 @@ const Toast = ({ visible, message, type }) => {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 
+import { useTheme } from '../../context/ThemeContext';
+
 export default function AIScreen({ navigation }) {
+    const { theme } = useTheme();
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
     const isFocused = useIsFocused();
     const [ingredientInput, setIngredientInput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -243,6 +251,7 @@ export default function AIScreen({ navigation }) {
 
     const handleAddIngredient = () => {
         if (ingredientInput.trim()) {
+            HapticsService.light();
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setIngredients([...ingredients, ingredientInput.trim()]);
             setIngredientInput('');
@@ -250,21 +259,25 @@ export default function AIScreen({ navigation }) {
     };
 
     const handleRemoveIngredient = (ingredient) => {
+        HapticsService.medium();
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setIngredients(ingredients.filter(item => item !== ingredient));
     };
 
     const handlePreferenceSelect = (key, value) => {
+        HapticsService.selection();
         setPreferences((prev) => ({ ...prev, [key]: value }));
     };
 
     const savePreferences = () => {
+        HapticsService.success();
         setPreferencesModalVisible(false);
         // Show the custom toast instead of alert
         showToast('Preferences applied!', 'success');
     };
 
     const clearPreferences = () => {
+        HapticsService.medium();
         setPreferences({
             prepareTime: '',
             dishType: '',
@@ -275,10 +288,12 @@ export default function AIScreen({ navigation }) {
     const handleGenerateRecipe = async () => {
         // Check if meal type is selected
         if (!mealType) {
+            HapticsService.error();
             showToast('Please select a meal type', 'error');
             return;
         }
 
+        HapticsService.heavy();
         setLoading(true);
         const { prepareTime, dishType } = preferences;
 
@@ -365,7 +380,10 @@ export default function AIScreen({ navigation }) {
                 </View>
                 <TouchableOpacity
                     style={styles.preferenceButton}
-                    onPress={() => setPreferencesModalVisible(true)}
+                    onPress={() => {
+                        HapticsService.light();
+                        setPreferencesModalVisible(true);
+                    }}
                     activeOpacity={0.7}
                 >
                     <View style={styles.iconContainer}>
@@ -386,10 +404,12 @@ export default function AIScreen({ navigation }) {
                         {lastRecipe && lastRecipe.recipe && (
                             <TouchableOpacity
                                 style={styles.resumeCard}
-                                onPress={() => navigation.navigate('GeneratedRecipe', { 
+                                onPress={() => {
+                                    HapticsService.light();
+                                    navigation.navigate('GeneratedRecipe', { 
                                     recipe: lastRecipe.recipe,
                                     userIngredients: lastRecipe.userIngredients || [] 
-                                })}
+                                })}}
                                 activeOpacity={0.8}
                             >
                                 <View style={styles.resumeContent}>
@@ -439,6 +459,7 @@ export default function AIScreen({ navigation }) {
                                                 key={item}
                                                 style={styles.suggestionPill}
                                                 onPress={() => {
+                                                    HapticsService.light();
                                                     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                                                     setIngredients([...ingredients, item]);
                                                 }}
@@ -489,7 +510,10 @@ export default function AIScreen({ navigation }) {
                                         styles.toggleButton,
                                         suggestionsNeeded === false && styles.activeToggle
                                     ]}
-                                    onPress={() => setSuggestionsNeeded(false)}
+                                    onPress={() => {
+                                        HapticsService.light();
+                                        setSuggestionsNeeded(false);
+                                    }}
                                     activeOpacity={0.8}
                                 >
                                     <Text
@@ -506,7 +530,10 @@ export default function AIScreen({ navigation }) {
                                         styles.toggleButton,
                                         suggestionsNeeded === true && styles.activeToggle
                                     ]}
-                                    onPress={() => setSuggestionsNeeded(true)}
+                                    onPress={() => {
+                                        HapticsService.light();
+                                        setSuggestionsNeeded(true);
+                                    }}
                                     activeOpacity={0.8}
                                 >
                                     <Text
@@ -548,7 +575,10 @@ export default function AIScreen({ navigation }) {
                                             styles.mealTypeCard,
                                             mealType === item.type && styles.selectedMealTypeCard
                                         ]}
-                                        onPress={() => setMealType(item.type)}
+                                        onPress={() => {
+                                            HapticsService.selection();
+                                            setMealType(item.type);
+                                        }}
                                         activeOpacity={0.8}
                                     >
                                         <View style={[
@@ -688,10 +718,10 @@ export default function AIScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: 'white',
+        backgroundColor: theme.background,
     },
     scrollContainer: {
         flex: 1,
@@ -708,7 +738,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     loadingModalContent: {
-        backgroundColor: 'white',
+        backgroundColor: theme.surface,
         borderRadius: 16,
         padding: 20,
         alignItems: 'center',
@@ -730,7 +760,7 @@ const styles = StyleSheet.create({
     loadingText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#664E2D',
+        color: theme.primary,
         marginTop: 10,
         textAlign: 'center',
     },
@@ -740,7 +770,7 @@ const styles = StyleSheet.create({
         top: 60,
         left: '5%',
         right: '5%',
-        backgroundColor: '#48755C',
+        backgroundColor: theme.success,
         padding: 14,
         borderRadius: 12,
         flexDirection: 'row',
@@ -756,7 +786,7 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     toastText: {
-        color: 'white',
+        color: theme.onPrimary,
         marginLeft: 10,
         fontSize: 15,
         fontWeight: '500',
@@ -767,9 +797,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 12,
-        backgroundColor: 'white',
+        backgroundColor: theme.surface,
         borderBottomWidth: 1,
-        borderBottomColor: '#F5EAE1',
+        borderBottomColor: theme.border,
     },
     dateContainer: {
         justifyContent: 'center',
@@ -777,11 +807,11 @@ const styles = StyleSheet.create({
     dayText: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#49351C',
+        color: theme.text,
     },
     dateText: {
         fontSize: 14,
-        color: 'grey',
+        color: theme.textSecondary,
         marginTop: 4,
     },
     preferenceButton: {
@@ -791,16 +821,16 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#F5EAE1',
+        backgroundColor: theme.mode === 'dark' ? '#2C3E33' : '#F5EAE1',
         justifyContent: 'center',
         alignItems: 'center',
     },
     card: {
-        backgroundColor: 'white',
+        backgroundColor: theme.surface,
         borderRadius: 24, // Softer corners
         padding: 20,
         marginBottom: 20,
-        shadowColor: '#48755C',
+        shadowColor: theme.primary,
         shadowOffset: {
             width: 0,
             height: 4,
@@ -814,7 +844,7 @@ const styles = StyleSheet.create({
     question: {
         fontSize: 18,
         marginBottom: 16,
-        color: '#49351C', // Darker brown for contrast
+        color: theme.text, // Darker brown for contrast
         fontWeight: '700',
     },
     
@@ -822,12 +852,12 @@ const styles = StyleSheet.create({
     searchBarContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F8F8F8',
+        backgroundColor: theme.mode === 'dark' ? '#333' : '#F8F8F8',
         borderRadius: 16,
         paddingHorizontal: 12,
         paddingVertical: 4,
         borderWidth: 1,
-        borderColor: '#EEEEEE',
+        borderColor: theme.border,
         marginBottom: 16,
     },
     searchIcon: {
@@ -837,7 +867,7 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingVertical: 12,
         fontSize: 16,
-        color: '#333',
+        color: theme.text,
     },
     addIconBtn: {
         padding: 4,
@@ -848,7 +878,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     suggestionsLabel: {
-        color: '#999',
+        color: theme.textSecondary,
         fontSize: 12,
         fontWeight: '600',
         marginBottom: 10,
@@ -859,13 +889,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
     },
     suggestionPill: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface,
         borderRadius: 20,
         paddingVertical: 8,
         paddingHorizontal: 16,
         marginRight: 10,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: theme.border,
         flexDirection: 'row',
         alignItems: 'center',
         shadowColor: '#000',
@@ -875,7 +905,7 @@ const styles = StyleSheet.create({
         elevation: 1,
     },
     suggestionText: {
-        color: '#664E2D',
+        color: theme.text,
         fontSize: 14,
         fontWeight: '500',
     },
@@ -887,7 +917,7 @@ const styles = StyleSheet.create({
     sectionLabel: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#48755C',
+        color: theme.primary,
         marginBottom: 10,
     },
     ingredientsGrid: {
@@ -919,7 +949,7 @@ const styles = StyleSheet.create({
     // Toggle Switch
     toggleContainer: {
         flexDirection: 'row',
-        backgroundColor: '#F3F4F6',
+        backgroundColor: theme.mode === 'dark' ? '#333' : '#F3F4F6',
         borderRadius: 16,
         padding: 4,
     },
@@ -930,7 +960,7 @@ const styles = StyleSheet.create({
         borderRadius: 14,
     },
     activeToggle: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -940,10 +970,10 @@ const styles = StyleSheet.create({
     toggleText: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#9CA3AF',
+        color: theme.textSecondary,
     },
     activeToggleText: {
-        color: '#48755C',
+        color: theme.primary,
     },
     
     // Meal Type Cards
@@ -954,41 +984,41 @@ const styles = StyleSheet.create({
     },
     mealTypeCard: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface,
         borderRadius: 16,
         padding: 16,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#F3F4F6',
+        borderColor: theme.border,
     },
     selectedMealTypeCard: {
-        borderColor: '#48755C',
-        backgroundColor: '#F0FDF4',
+        borderColor: theme.primary,
+        backgroundColor: theme.mode === 'dark' ? '#1E3326' : '#F0FDF4',
     },
     mealTypeIconContainer: {
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: theme.mode === 'dark' ? '#333' : '#F3F4F6',
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 8,
     },
     selectedMealTypeIconContainer: {
-        backgroundColor: '#48755C',
+        backgroundColor: theme.primary,
     },
     mealTypeText: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#664E2D',
+        color: theme.text,
     },
     selectedMealTypeText: {
-        color: '#48755C',
+        color: theme.primary,
     },
     
     // Generate Button
     generateButton: {
-        backgroundColor: '#48755C',
+        backgroundColor: theme.primary,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
@@ -996,7 +1026,7 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         marginTop: 10,
         marginBottom: 30,
-        shadowColor: '#48755C',
+        shadowColor: theme.primary,
         shadowOffset: {
             width: 0,
             height: 8,
@@ -1009,27 +1039,27 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     generateButtonText: {
-        color: 'white',
+        color: theme.onPrimary,
         fontSize: 18,
         fontWeight: 'bold',
     },
     
     // Resume Card Styles
     resumeCard: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface,
         borderRadius: 16,
         padding: 16,
         marginBottom: 20,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        shadowColor: '#48755C',
+        shadowColor: theme.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 4,
         borderWidth: 1,
-        borderColor: '#E8F5F1',
+        borderColor: theme.border,
     },
     resumeContent: {
         flexDirection: 'row',
@@ -1040,7 +1070,7 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#48755C',
+        backgroundColor: theme.primary,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
@@ -1051,7 +1081,7 @@ const styles = StyleSheet.create({
     },
     resumeLabel: {
         fontSize: 12,
-        color: '#6B7280',
+        color: theme.textSecondary,
         fontWeight: '600',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
@@ -1059,7 +1089,7 @@ const styles = StyleSheet.create({
     },
     resumeRecipeName: {
         fontSize: 16,
-        color: '#1A1A1A',
+        color: theme.text,
         fontWeight: '700',
     },
 
@@ -1069,7 +1099,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     modalContent: {
-        backgroundColor: '#fff',
+        backgroundColor: theme.surface,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         padding: 20,
@@ -1082,12 +1112,12 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         paddingBottom: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#F5EAE1',
+        borderBottomColor: theme.border,
     },
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#49351C',
+        color: theme.text,
     },
     closeButton: {
         padding: 4,
@@ -1099,7 +1129,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         marginVertical: 10,
-        color: '#664E2D',
+        color: theme.primary,
     },
     optionsContainer: {
         flexDirection: 'row',
@@ -1108,23 +1138,23 @@ const styles = StyleSheet.create({
     },
     preferenceOption: {
         borderWidth: 2,
-        borderColor: '#F5EAE1',
+        borderColor: theme.border,
         borderRadius: 20,
         paddingVertical: 10,
         paddingHorizontal: 16,
         margin: 4,
-        backgroundColor: 'white',
+        backgroundColor: theme.surface,
     },
     selectedPreferenceOption: {
-        backgroundColor: '#DCEFDF',
-        borderColor: '#48755C',
+        backgroundColor: theme.mode === 'dark' ? '#1E3326' : '#DCEFDF',
+        borderColor: theme.primary,
     },
     preferenceOptionText: {
-        color: 'black',
+        color: theme.text,
         fontSize: 15,
     },
     selectedPreferenceOptionText: {
-        color: '#49351C',
+        color: theme.primary,
     },
     modalButtonsContainer: {
         flexDirection: 'row',
@@ -1133,7 +1163,7 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     clearButton: {
-        backgroundColor: 'white',
+        backgroundColor: theme.surface,
         padding: 14,
         borderRadius: 10,
         alignItems: 'center',
@@ -1142,12 +1172,12 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     clearButtonText: {
-        color: 'red',
+        color: theme.error,
         fontSize: 16,
         fontWeight: 'bold',
     },
     applyButton: {
-        backgroundColor: '#48755C',
+        backgroundColor: theme.primary,
         padding: 14,
         borderRadius: 10,
         alignItems: 'center',
@@ -1156,8 +1186,32 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     applyButtonText: {
-        color: 'white',
+        color: theme.onPrimary,
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    // New Badge Styles
+    preferencesSummary: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 4,
+        marginBottom: 4,
+    },
+    preferenceBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: theme.mode === 'dark' ? '#1E3326' : '#F0FDF4',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: theme.primary,
+    },
+    preferenceBadgeText: {
+        fontSize: 12,
+        color: theme.primary,
+        fontWeight: '600',
+        marginLeft: 6,
     },
 });

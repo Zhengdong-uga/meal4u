@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
 
 const RESTRICTION_OPTIONS = [
   { id: 'shellfish-free', title: 'Shellfish-Free' },
@@ -22,6 +23,8 @@ const RESTRICTION_OPTIONS = [
 ];
 
 export default function RestrictionsStep({ selectedRestrictions, onSelectRestrictions }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   
   const toggleRestriction = (restrictionId) => {
     if (selectedRestrictions.includes(restrictionId)) {
@@ -68,25 +71,26 @@ export default function RestrictionsStep({ selectedRestrictions, onSelectRestric
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: theme.background,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#000000',
+    color: theme.text,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: theme.text,
     marginBottom: 8,
   },
   description: {
     fontSize: 14,
-    color: '#666666',
+    color: theme.textSecondary,
     marginBottom: 20,
   },
   tagsContainer: {
@@ -97,27 +101,27 @@ const styles = StyleSheet.create({
   tag: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: theme.surface,
     borderRadius: 20,
     margin: 6,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: theme.border,
   },
   selectedTag: {
-    backgroundColor: '#E8F5E9',
-    borderColor: '#48755C',
+    backgroundColor: theme.mode === 'dark' ? '#1E3326' : '#E8F5E9',
+    borderColor: theme.primary,
   },
   tagText: {
     fontSize: 14,
-    color: '#333333',
+    color: theme.text,
   },
   selectedTagText: {
-    color: '#48755C',
+    color: theme.primary,
     fontWeight: '500',
   },
   infoText: {
     fontSize: 14,
-    color: '#999999',
+    color: theme.textSecondary,
     textAlign: 'center',
     marginTop: 30,
     marginBottom: 20,
