@@ -357,10 +357,14 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
 
 
   // --- Draggable Event Card Component ---
-  const DraggableEventCard = ({ meal, hour, index, totalMealsInSlot, onDrop }) => {
+  const DraggableEventCard = ({ meal, hour, index, totalMealsInSlot }) => {
     const translateY = useSharedValue(0);
     const isDragging = useSharedValue(false);
     const ROW_HEIGHT = 80; // Assuming fixed row height for calculation
+
+    const mealName = meal?.name;
+    const mealType = meal?.type;
+    const oldTime = meal?.time;
 
     const panGesture = useAnimatedGestureHandler({
       onStart: (_, ctx) => {
@@ -378,7 +382,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
         const rowOffset = Math.round(translateY.value / ROW_HEIGHT);
         const newHour = hour + rowOffset;
         
-        runOnJS(onDrop)(meal, hour, newHour);
+        runOnJS(handleDropMeal)(mealName, mealType, oldTime, hour, newHour);
         translateY.value = withSpring(0); // Reset position after drop
       },
     });
@@ -434,15 +438,13 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
     );
   };
 
-  const handleDropMeal = (meal, oldHour, newHour) => {
+  const handleDropMeal = (mealName, mealType, oldTime, oldHour, newHour) => {
     if (newHour < 6 || newHour > 21) return; // Bounds check (6am - 9pm)
     if (oldHour === newHour) return;
+    if (!mealName || !mealType) return;
 
     // Determine new time string
     const newTime = formatTime(newHour);
-    
-    // Update meal object
-    const updatedMeal = { ...meal, time: newTime };
     
     // Update state
     setMealsByDate(prev => {
@@ -454,12 +456,13 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
         // OR move it to a different type if we wanted to change type based on time.
         // For now, let's just update the 'time' property.
         
-        const type = meal.type;
+        const type = mealType;
         const typeList = [...dateMeals[type]];
-        const mealIndex = typeList.findIndex(m => m.name === meal.name);
+        const fallbackOldTime = oldTime || formatTime(oldHour);
+        const mealIndex = typeList.findIndex(m => m.name === mealName && (m.time || fallbackOldTime) === fallbackOldTime);
         
         if (mealIndex !== -1) {
-            typeList[mealIndex] = updatedMeal;
+            typeList[mealIndex] = { ...typeList[mealIndex], time: newTime };
             
             return {
                 ...prev,
@@ -527,7 +530,6 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
                     hour={hour}
                     index={index}
                     totalMealsInSlot={mealsByHour[hour].length}
-                    onDrop={handleDropMeal}
                 />
               ))}
             </View>

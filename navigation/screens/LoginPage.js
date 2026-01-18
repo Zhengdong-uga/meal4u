@@ -35,7 +35,7 @@ const { width, height } = Dimensions.get('window');
 export default function LoginPage() {
     const { theme } = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
-    
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
@@ -54,11 +54,11 @@ export default function LoginPage() {
         checkAppleAvailability();
     }, []);
 
+    // For iOS native apps, don't specify redirectUri - let expo-auth-session handle it
+    // The iosClientId's reverse client ID will be used automatically
     const [request, response, promptAsync] = Google.useAuthRequest({
         iosClientId: "809015044004-2qe0fbe9r14iebp0u2basjsgs5t9vcur.apps.googleusercontent.com",
         webClientId: "809015044004-dsfp0lf7r2knti04sjaqg372ebaej6nc.apps.googleusercontent.com",
-        redirectUri: "https://meal4u-bc86f.firebaseapp.com/__/auth/handler",
-        useProxy: false,
     });
 
     useEffect(() => {
@@ -206,7 +206,11 @@ export default function LoginPage() {
                     <View style={styles.headerContainer}>
                         {/* Replace with your actual logo */}
                         <View style={styles.logoContainer}>
-                            <Ionicons name="restaurant" size={50} color={theme.primary} />
+                            <Image
+                                source={require('../../assets/meal4u_logo.jpg')}
+                                style={styles.logoImage}
+                                resizeMode="contain"
+                            />
                         </View>
                         <Text style={styles.appName}>Meal4U</Text>
                         <Text style={styles.tagline}>Your personalized meal planning companion</Text>
@@ -350,15 +354,23 @@ const createStyles = (theme) => StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: theme.mode === 'dark' ? '#2C3E33' : '#F0F8F0',
+        backgroundColor: theme.surface,
         justifyContent: 'center',
         alignItems: 'center',
+        overflow: 'hidden',
         marginBottom: 16,
+        borderWidth: 1,
+        borderColor: theme.border,
+    },
+    logoImage: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
     },
     appName: {
         fontSize: 28,
-        fontWeight: 'bold',
-        color: theme.primary,
+        fontWeight: '700',
+        color: theme.textPrimary,
         marginBottom: 8,
     },
     tagline: {

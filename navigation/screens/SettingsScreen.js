@@ -59,10 +59,6 @@ export default function SettingsScreen({ navigation }) {
                     onPress: async () => {
                         try {
                             await signOut(auth);
-                            navigation.reset({
-                                index: 0,
-                                routes: [{ name: 'Login' }],
-                            });
                         } catch (error) {
                             Alert.alert('Error', 'Failed to log out. Please try again.');
                         }
@@ -114,10 +110,7 @@ export default function SettingsScreen({ navigation }) {
                     {
                         text: 'OK',
                         onPress: () => {
-                            navigation.reset({
-                                index: 0,
-                                routes: [{ name: 'Login' }],
-                            });
+                            // Auth state will update and MainContainer will show Login
                         },
                     },
                 ]

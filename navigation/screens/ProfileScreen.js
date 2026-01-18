@@ -239,7 +239,6 @@ export default function ProfileScreen({ navigation }) {
         signOut(auth)
             .then(() => {
                 Alert.alert('Logged out', 'You have been logged out successfully');
-                navigation.navigate('Login');
             })
             .catch((error) => {
                 console.error('Error signing out: ', error);
