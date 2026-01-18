@@ -207,7 +207,7 @@ export default function LoginPage() {
                         {/* Replace with your actual logo */}
                         <View style={styles.logoContainer}>
                             <Image
-                                source={require('../../assets/meal4u_logo.jpg')}
+                                source={require('../../assets/meal4u_logo.png')}
                                 style={styles.logoImage}
                                 resizeMode="contain"
                             />

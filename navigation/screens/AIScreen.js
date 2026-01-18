@@ -26,6 +26,7 @@ import { doc, getDoc, updateDoc, getFirestore } from 'firebase/firestore';
 import { ask_gemini } from '../../backend/api.js';
 import LottieView from 'lottie-react-native';
 import HapticsService from '../../utils/haptics';
+import { fetchRecipeImage } from '../../utils/imageService';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android') {
@@ -295,6 +296,10 @@ export default function AIScreen({ navigation }) {
 
         HapticsService.heavy();
         setLoading(true);
+        
+        // Clear last recipe to prevent showing old image
+        setLastRecipe(null);
+        
         const { prepareTime, dishType } = preferences;
 
         try {
@@ -312,6 +317,7 @@ export default function AIScreen({ navigation }) {
 
             const result = JSON.parse(apiResult);
 
+            // Create recipe without image first
             const generatedRecipe = {
                 name: result.name,
                 description: result.description,
@@ -321,19 +327,32 @@ export default function AIScreen({ navigation }) {
                 instructions: result.stepsOfPreparation,
                 nutrition: result.nutrition,
                 notes: ['Generated with AI based on your preferences.'],
+                category: mealType,
+                image: null, // Start with null, will be loaded in the recipe screen
+                imageLoading: true, // Flag to show loading state
             };
 
-            // Save to local storage for recovery
-            try {
-                const storageData = {
-                    recipe: generatedRecipe,
-                    userIngredients: ingredients
-                };
-                await AsyncStorage.setItem('last_generated_recipe', JSON.stringify(storageData));
-                setLastRecipe(storageData); // Update state to store full object
-            } catch (e) {
-                console.error("Failed to save recipe locally", e);
-            }
+            // Fetch recipe image in the background
+            fetchRecipeImage(result.name, mealType).then(recipeImage => {
+                // Update the recipe with the fetched image
+                generatedRecipe.image = recipeImage;
+                generatedRecipe.imageLoading = false;
+                
+                // Save to local storage with image
+                try {
+                    const storageData = {
+                        recipe: generatedRecipe,
+                        userIngredients: ingredients
+                    };
+                    AsyncStorage.setItem('last_generated_recipe', JSON.stringify(storageData));
+                    setLastRecipe(storageData);
+                } catch (e) {
+                    console.error("Failed to save recipe locally", e);
+                }
+            }).catch(err => {
+                console.error("Failed to fetch recipe image", err);
+                generatedRecipe.imageLoading = false;
+            });
 
             const user = auth.currentUser;
             if (user) {
