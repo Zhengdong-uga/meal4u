@@ -746,8 +746,8 @@ const createStyles = (theme) => StyleSheet.create({
         flex: 1,
     },
     contentContainer: {
-        padding: 16,
-        paddingBottom: 30,
+        padding: 20,
+        paddingBottom: 100, // Add padding for floating tab bar
     },
     // Loading Animation Styles
     loadingModalOverlay: {

@@ -857,6 +857,7 @@ const createStyles = (theme) => StyleSheet.create({
   timelineContent: {
     paddingVertical: 20,
     paddingHorizontal: 20,
+    paddingBottom: 100, // Add padding for floating tab bar
   },
   timeRow: {
     flexDirection: 'row',

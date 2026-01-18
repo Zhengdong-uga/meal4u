@@ -11,6 +11,7 @@ import { onAuthStateChanged, getAuth } from 'firebase/auth';
 import { doc, getDoc, getFirestore } from 'firebase/firestore';
 import firebaseApp from '../backend/src/firebase';
 import { useTheme } from '../context/ThemeContext';
+import CustomTabBar from './CustomTabBar';
 
 // Screens
 import CalendarScreen from './screens/CalendarScreen';
@@ -69,56 +70,17 @@ function TabNavigator() {
     return (
         <Tab.Navigator
             initialRouteName={homeName}
-            screenOptions={({ route }) => ({
+            tabBar={props => <CustomTabBar {...props} />}
+            screenOptions={{
                 headerShown: false,
-                tabBarShowLabel: false,
-                tabBarIcon: ({ focused, color, size = 24 }) => {
-                    let iconName;
-                    let rn = route.name;
-
-                    if (rn === homeName) {
-                        iconName = focused ? 'home' : 'home-outline';
-                    } else if (rn === calendarName) {
-                        iconName = focused ? 'calendar' : 'calendar-clear-outline';
-                    } else if (rn === aiName) {
-                        iconName = focused ? 'sparkles' : 'sparkles-outline';
-                    } else if (rn === profileName) {
-                        iconName = focused ? 'person-circle' : 'person-circle-outline';
-                    }
-
-                    return <Ionicons name={iconName} size={Number(size)} color={color} />;
-                },
-                tabBarActiveTintColor: theme.primary,
-                tabBarInactiveTintColor: theme.textSecondary,
-                tabBarLabelStyle: { fontSize: 14 },
-                tabBarStyle: { 
-                  height: 80,
-                  backgroundColor: theme.surface,
-                  borderTopColor: theme.border,
-                  // Add shadow for iOS
-                  ...Platform.select({
-                    ios: {
-                      shadowColor: theme.mode === 'dark' ? '#000' : '#000',
-                      shadowOffset: { width: 0, height: -2 },
-                      shadowOpacity: 0.1,
-                      shadowRadius: 4,
-                    },
-                    // Add elevation for Android
-                    android: {
-                      elevation: 8,
-                    },
-                  }),
-                },
-                tabBarIconStyle: { marginTop: 5 },
-                // Add animations to tab transitions
-                tabBarHideOnKeyboard: true,
-                // Animate tab changes
-                tabBarItemStyle: {
-                  paddingBottom: 5,
-                },
-                // Add animation to screen transitions within tabs
-                animationEnabled: true,
-            })}
+                // Make background transparent for floating effect
+                tabBarStyle: {
+                    position: 'absolute',
+                    backgroundColor: 'transparent',
+                    borderTopWidth: 0,
+                    elevation: 0,
+                }
+            }}
         >
             <Tab.Screen name={homeName} component={HomeScreen} />
             <Tab.Screen name={calendarName} component={CalendarScreen} />

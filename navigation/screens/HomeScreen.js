@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 100,
+    paddingBottom: 100, // Add padding for floating tab bar
   },
   header: {
     flexDirection: 'row',
