@@ -71,6 +71,7 @@ function TabNavigator() {
             initialRouteName={homeName}
             screenOptions={({ route }) => ({
                 headerShown: false,
+                tabBarShowLabel: false,
                 tabBarIcon: ({ focused, color, size = 24 }) => {
                     let iconName;
                     let rn = route.name;

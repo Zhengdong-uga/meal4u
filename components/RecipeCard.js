@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image, ActivityIndicator } from 'react-native';
 import { SPACING, RADIUS, SHADOWS, FONTS } from '../constants/theme';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../context/ThemeContext';
@@ -22,12 +22,26 @@ const RecipeCard = ({ recipe, userIngredients = [], onSave, onAddToPlan, onBack,
     instructions = [],
     nutrition = {},
     category,
+    image,
+    imageLoading,
   } = recipe;
 
   const displayName = name || title || 'Untitled Recipe';
   
   // Tab state for the card content
   const [activeTab, setActiveTab] = useState('details'); // details | instructions
+  
+  // Local state to track image loading
+  const [isImageLoading, setIsImageLoading] = useState(imageLoading || false);
+  const [currentImage, setCurrentImage] = useState(image);
+
+  // Update image when it loads
+  useEffect(() => {
+    if (image && image !== currentImage) {
+      setCurrentImage(image);
+      setIsImageLoading(false);
+    }
+  }, [image]);
 
   // Helper to check if ingredient is owned by user
   const isIngredientAvailable = (ingredientLine) => {
@@ -41,22 +55,39 @@ const RecipeCard = ({ recipe, userIngredients = [], onSave, onAddToPlan, onBack,
       {/* Main Card */}
       <View style={styles.card}>
         
-        {/* Header with Back and Share Buttons */}
-        <View style={styles.header}>
-          <View style={styles.navigationRow}>
+        {/* Recipe Image with Overlay Buttons or Loading State */}
+        <View style={styles.imageContainer}>
+          {isImageLoading || !currentImage ? (
+            <View style={styles.imageLoadingContainer}>
+              <ActivityIndicator size="large" color={theme.primary} />
+              <Text style={styles.imageLoadingText}>Loading image...</Text>
+            </View>
+          ) : (
+            <Image 
+              source={{ uri: currentImage }} 
+              style={styles.recipeImage}
+              resizeMode="cover"
+            />
+          )}
+          
+          {/* Overlay Navigation Buttons */}
+          <View style={styles.imageOverlay}>
             {onBack ? (
-              <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                  <Ionicons name="chevron-back-outline" size={24} color={theme.primary} />
+              <TouchableOpacity onPress={onBack} style={styles.overlayBackButton}>
+                  <Ionicons name="chevron-back-outline" size={28} color="#FFFFFF" />
               </TouchableOpacity>
             ) : <View />}
             
             {onShare && (
-              <TouchableOpacity onPress={onShare} style={styles.shareButton}>
-                  <Ionicons name="share-social-outline" size={24} color={theme.primary} />
+              <TouchableOpacity onPress={onShare} style={styles.overlayShareButton}>
+                  <Ionicons name="share-social-outline" size={24} color="#FFFFFF" />
               </TouchableOpacity>
             )}
           </View>
-
+        </View>
+        
+        {/* Header */}
+        <View style={styles.header}>
           <Text style={styles.title}>{displayName}</Text>
           
           <View style={styles.tagsRow}>
@@ -202,43 +233,80 @@ const createStyles = (theme) => StyleSheet.create({
   },
   card: {
     backgroundColor: theme.surface,
-    borderRadius: RADIUS.xxl,
-    paddingHorizontal: SPACING.l,
-    paddingTop: SPACING.xl,
-    paddingBottom: SPACING.l,
+    borderRadius: RADIUS.xl,
+    overflow: 'hidden',
     ...SHADOWS.medium,
     shadowColor: theme.mode === 'dark' ? '#000' : theme.primary,
   },
-  header: {
-    marginBottom: SPACING.l,
+  imageContainer: {
+    position: 'relative',
+    width: '100%',
   },
-  navigationRow: {
+  recipeImage: {
+    width: '100%',
+    height: 240,
+    backgroundColor: theme.mode === 'dark' ? '#333' : '#F3F4F6',
+  },
+  imageLoadingContainer: {
+    width: '100%',
+    height: 240,
+    backgroundColor: theme.mode === 'dark' ? '#333' : '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: SPACING.m,
+  },
+  imageLoadingText: {
+    color: theme.textSecondary,
+    fontSize: 14,
+    fontWeight: '500',
+    marginTop: SPACING.s,
+  },
+  imageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SPACING.s,
+    padding: SPACING.m,
+    paddingTop: SPACING.l,
   },
-  backButton: {
-    padding: 8,
-    marginLeft: -8, // Align icon visually
-    backgroundColor: theme.mode === 'dark' ? '#333' : '#F3F4F6',
+  overlayBackButton: {
+    width: 40,
+    height: 40,
     borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  shareButton: {
-    padding: 8,
-    marginRight: -8, // Align icon visually
-    backgroundColor: theme.mode === 'dark' ? '#333' : '#F3F4F6',
+  overlayShareButton: {
+    width: 40,
+    height: 40,
     borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    paddingHorizontal: SPACING.l,
+    paddingTop: SPACING.l,
+    marginBottom: SPACING.m,
   },
   title: {
     ...FONTS.header,
-    marginBottom: SPACING.s,
-    color: theme.primary,
+    marginBottom: SPACING.m,
+    color: theme.text,
+    fontSize: 24,
+    fontWeight: '700',
+    lineHeight: 32,
   },
   description: {
     ...FONTS.body,
     marginTop: SPACING.m,
     color: theme.textSecondary,
+    lineHeight: 22,
+    paddingRight: SPACING.s,
   },
   tagsRow: {
     flexDirection: 'row',
@@ -266,6 +334,7 @@ const createStyles = (theme) => StyleSheet.create({
     flexDirection: 'row',
     gap: SPACING.m,
     marginBottom: SPACING.xl,
+    paddingHorizontal: SPACING.l,
   },
   actionButton: {
     flex: 1,
@@ -302,6 +371,7 @@ const createStyles = (theme) => StyleSheet.create({
     marginBottom: SPACING.l,
     padding: SPACING.s,
     gap: 4,
+    paddingHorizontal: SPACING.l,
   },
   discardText: {
     color: theme.error,
@@ -315,6 +385,7 @@ const createStyles = (theme) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.border,
     marginBottom: SPACING.m,
+    paddingHorizontal: SPACING.l,
   },
   tab: {
     paddingVertical: SPACING.m,
@@ -337,10 +408,8 @@ const createStyles = (theme) => StyleSheet.create({
 
   // Content
   contentBody: {
-    minHeight: 200,
-  },
-  contentSection: {
     paddingBottom: SPACING.xl,
+    paddingHorizontal: SPACING.l,
   },
   listContainer: {
     gap: SPACING.m,

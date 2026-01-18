@@ -441,40 +441,52 @@ export default function ProfileScreen({ navigation }) {
                     <View style={styles.modalOverlay}>
                         <Animated.View
                             style={[
-                                styles.modalContent,
+                                styles.avatarModalContent,
                                 { transform: [{ translateY: translateY }] }
                             ]}
                             {...panResponder.panHandlers}
                         >
                             <View style={styles.modalDragIndicator} />
 
-                            <View style={styles.modalHeader}>
-                                <Text style={styles.modalTitle}>Choose your avatar</Text>
-                                <TouchableOpacity onPress={closeModals}>
-                                    <Icon name="close" size={24} color={theme.text} />
-                                </TouchableOpacity>
+                            <TouchableOpacity style={styles.avatarCloseButton} onPress={closeModals}>
+                                <Icon name="close-circle" size={32} color={theme.textSecondary} />
+                            </TouchableOpacity>
+
+                            {/* Large Preview */}
+                            <View style={styles.avatarPreviewContainer}>
+                                <View style={styles.avatarPreviewGlow} />
+                                <Image
+                                    source={userAvatar ? avatarOptions[userAvatar - 1]?.source : avatarOptions[0].source}
+                                    style={styles.avatarPreviewImage}
+                                />
                             </View>
 
-                            <View style={styles.avatarsGrid}>
-                                {avatarOptions.map((avatar) => (
+                            {/* Horizontal Scroll Carousel */}
+                            <FlatList
+                                data={avatarOptions}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.avatarCarouselContainer}
+                                keyExtractor={(item) => item.id.toString()}
+                                renderItem={({ item }) => (
                                     <TouchableOpacity
-                                        key={avatar.id}
                                         style={[
-                                            styles.avatarOption,
-                                            userAvatar === avatar.id && styles.selectedAvatarOption
+                                            styles.avatarCarouselItem,
+                                            (userAvatar === item.id || (!userAvatar && item.id === 1)) && styles.avatarCarouselItemSelected
                                         ]}
-                                        onPress={() => selectAvatar(avatar.id)}
+                                        onPress={() => selectAvatar(item.id)}
                                     >
-                                        <Image source={avatar.source} style={styles.avatarOptionImage} />
-                                        <Text style={styles.avatarName}>{avatar.name}</Text>
-                                        {userAvatar === avatar.id && (
-                                            <View style={styles.selectedIndicator}>
-                                                <Icon name="checkmark-circle" size={24} color={theme.primary} />
-                                            </View>
-                                        )}
+                                        <Image source={item.source} style={styles.avatarCarouselImage} />
                                     </TouchableOpacity>
-                                ))}
-                            </View>
+                                )}
+                            />
+
+                            <Text style={styles.avatarPickerTitle}>Pick a profile picture</Text>
+                            <Text style={styles.avatarPickerSubtitle}>Tap on one of our signature avatars</Text>
+
+                            <TouchableOpacity style={styles.avatarConfirmButton} onPress={closeModals}>
+                                <Text style={styles.avatarConfirmButtonText}>Done</Text>
+                            </TouchableOpacity>
                         </Animated.View>
                     </View>
                 </Modal>
@@ -743,42 +755,88 @@ const createStyles = (theme) => StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
     },
-    avatarsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        paddingHorizontal: 10,
-        marginTop: 10,
-    },
-    avatarOption: {
-        width: '30%',
-        marginBottom: 20,
+    avatarModalContent: {
+        backgroundColor: theme.surface,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingTop: 12,
+        paddingBottom: 40,
+        paddingHorizontal: 20,
         alignItems: 'center',
-        padding: 10,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: theme.border,
     },
-    selectedAvatarOption: {
-        borderColor: theme.primary,
-        backgroundColor: theme.mode === 'dark' ? '#2C3E33' : '#F0F9F4',
+    avatarCloseButton: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        zIndex: 10,
     },
-    avatarOptionImage: {
+    avatarPreviewContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 40,
+        marginBottom: 30,
+    },
+    avatarPreviewGlow: {
+        position: 'absolute',
+        width: 180,
+        height: 180,
+        borderRadius: 90,
+        backgroundColor: theme.primary,
+        opacity: 0.15,
+    },
+    avatarPreviewImage: {
+        width: 150,
+        height: 150,
+        borderRadius: 75,
+    },
+    avatarCarouselContainer: {
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+    },
+    avatarCarouselItem: {
         width: 70,
         height: 70,
         borderRadius: 35,
-        marginBottom: 8,
+        marginHorizontal: 8,
+        borderWidth: 2,
+        borderColor: 'transparent',
+        overflow: 'hidden',
     },
-    avatarName: {
-        fontSize: 12,
+    avatarCarouselItemSelected: {
+        borderColor: theme.primary,
+    },
+    avatarCarouselImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 35,
+    },
+    avatarPickerTitle: {
+        fontSize: 22,
+        fontWeight: '700',
         color: theme.text,
+        marginTop: 24,
         textAlign: 'center',
-        fontWeight: '500',
     },
-    selectedIndicator: {
-        position: 'absolute',
-        top: 5,
-        right: 5,
+    avatarPickerSubtitle: {
+        fontSize: 14,
+        color: theme.textSecondary,
+        marginTop: 8,
+        textAlign: 'center',
+        paddingHorizontal: 40,
+    },
+    avatarConfirmButton: {
+        backgroundColor: theme.text,
+        paddingVertical: 16,
+        paddingHorizontal: 60,
+        borderRadius: 30,
+        marginTop: 24,
+        width: '90%',
+        alignItems: 'center',
+    },
+    avatarConfirmButtonText: {
+        color: theme.surface,
+        fontSize: 16,
+        fontWeight: '700',
     },
     logoutButton: {
         backgroundColor: theme.secondary,

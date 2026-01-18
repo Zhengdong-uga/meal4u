@@ -11,7 +11,8 @@ import {
     ActivityIndicator,
     Alert,
     RefreshControl,
-    Share
+    Share,
+    Image
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import EmptyState from '../../components/EmptyState';
@@ -31,7 +32,8 @@ const RecipeCard = ({ recipe, onPress, isSelectionMode = false, onSelect = null,
     name,
     time, 
     difficulty, 
-    category 
+    category,
+    image
   } = recipe;
   
   // Use title or name property based on which one exists
@@ -55,11 +57,12 @@ const RecipeCard = ({ recipe, onPress, isSelectionMode = false, onSelect = null,
   const getCategoryIcon = () => {
     const cat = (category || '').toLowerCase();
     
+    if (cat.includes('meals') || cat.includes('meal')) return 'restaurant-outline';
+    if (cat.includes('drinks') || cat.includes('drink')) return 'cafe-outline';
+    if (cat.includes('dessert')) return 'ice-cream-outline';
     if (cat.includes('breakfast')) return 'partly-sunny-outline';
     if (cat.includes('lunch')) return 'pizza-outline';
     if (cat.includes('dinner')) return 'moon';
-    if (cat.includes('dessert')) return 'ice-cream-outline';
-    if (cat.includes('drink')) return 'cafe-outline';
     if (cat.includes('snack')) return 'nutrition-outline';
     
     // Default icon
@@ -80,9 +83,17 @@ const RecipeCard = ({ recipe, onPress, isSelectionMode = false, onSelect = null,
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View style={[styles.iconContainer, { backgroundColor }]}>
-        <Icon name={getCategoryIcon()} size={24} color={theme.primary} />
-      </View>
+      {image ? (
+        <Image 
+          source={{ uri: image }} 
+          style={styles.recipeImage}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={[styles.iconContainer, { backgroundColor }]}>
+          <Icon name={getCategoryIcon()} size={24} color={theme.primary} />
+        </View>
+      )}
       
       <View style={styles.contentContainer}>
         <Text style={styles.cardTitle} numberOfLines={2}>{recipeName}</Text>
@@ -137,8 +148,8 @@ export default function SavedRecipesScreen({ navigation, route }) {
     const [refreshing, setRefreshing] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState('All');
 
-    // Categories for filtering
-    const categories = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Snacks'];
+    // Categories for filtering - matches mealType values from AIScreen
+    const categories = ['All', 'Meals', 'Drinks', 'Dessert'];
 
     // Check if we're coming from Calendar screen for selection mode
     const isSelectionMode = route.params?.returnScreen === 'Calendar';
@@ -661,6 +672,13 @@ const createCardStyles = (theme) => StyleSheet.create({
         borderLeftWidth: 6,
         borderLeftColor: theme.primary,
         alignItems: 'center',
+    },
+    recipeImage: {
+        width: 60,
+        height: 60,
+        borderRadius: 8,
+        marginRight: 12,
+        backgroundColor: theme.mode === 'dark' ? '#333' : '#F3F4F6',
     },
     iconContainer: {
         width: 46,

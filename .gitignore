@@ -41,3 +41,4 @@ apikeys.json
 credentials.json
 credentials/
 ios/GoogleService-Info.plist
+config/apiKeys.js
