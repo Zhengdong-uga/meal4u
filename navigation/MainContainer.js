@@ -10,9 +10,11 @@ import { useState, useEffect } from 'react';
 import { onAuthStateChanged, getAuth } from 'firebase/auth';
 import { doc, getDoc, getFirestore } from 'firebase/firestore';
 import firebaseApp from '../backend/src/firebase';
+import { useTheme } from '../context/ThemeContext';
 
 // Screens
 import CalendarScreen from './screens/CalendarScreen';
+import HomeScreen from './screens/HomeScreen';
 import AIScreen from './screens/AIScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SavedRecipesScreen from './screens/SavedRecipesScreen';
@@ -20,9 +22,11 @@ import GeneratedRecipeScreen from './screens/GeneratedRecipeScreen';
 import LoginPage from './screens/LoginPage';
 import EatingPreferenceScreen from './screens/EatingPreference';
 import OnboardingQuestionnaire from './screens/OnboardingQuestionnaire';
+import SettingsScreen from './screens/SettingsScreen';
 
 // Screen names
 const loginName = "Login";
+const homeName = "Home";
 const calendarName = "Calendar";
 const aiName = "Meal Generating";
 const profileName = "Profile";
@@ -61,33 +65,39 @@ const screenOptions = {
 };
 
 function TabNavigator() {
+    const { theme } = useTheme();
     return (
         <Tab.Navigator
-            initialRouteName={calendarName}
+            initialRouteName={homeName}
             screenOptions={({ route }) => ({
+                headerShown: false,
                 tabBarIcon: ({ focused, color, size = 24 }) => {
                     let iconName;
                     let rn = route.name;
 
-                    if (rn === calendarName) {
-                        iconName = focused ? 'calendar' : 'calendar-outline';
+                    if (rn === homeName) {
+                        iconName = focused ? 'home' : 'home-outline';
+                    } else if (rn === calendarName) {
+                        iconName = focused ? 'calendar' : 'calendar-clear-outline';
                     } else if (rn === aiName) {
                         iconName = focused ? 'sparkles' : 'sparkles-outline';
                     } else if (rn === profileName) {
-                        iconName = focused ? 'person' : 'person-outline';
+                        iconName = focused ? 'person-circle' : 'person-circle-outline';
                     }
 
                     return <Ionicons name={iconName} size={Number(size)} color={color} />;
                 },
-                tabBarActiveTintColor: '#664E2D',
-                tabBarInactiveTintColor: 'grey',
+                tabBarActiveTintColor: theme.primary,
+                tabBarInactiveTintColor: theme.textSecondary,
                 tabBarLabelStyle: { fontSize: 14 },
                 tabBarStyle: { 
                   height: 80,
+                  backgroundColor: theme.surface,
+                  borderTopColor: theme.border,
                   // Add shadow for iOS
                   ...Platform.select({
                     ios: {
-                      shadowColor: '#000',
+                      shadowColor: theme.mode === 'dark' ? '#000' : '#000',
                       shadowOffset: { width: 0, height: -2 },
                       shadowOpacity: 0.1,
                       shadowRadius: 4,
@@ -109,6 +119,7 @@ function TabNavigator() {
                 animationEnabled: true,
             })}
         >
+            <Tab.Screen name={homeName} component={HomeScreen} />
             <Tab.Screen name={calendarName} component={CalendarScreen} />
             <Tab.Screen name={aiName} component={AIScreen} />
             <Tab.Screen name={profileName} component={ProfileScreen} />
@@ -194,7 +205,10 @@ function MainContainer() {
             />
           ) : (
             // Step 3: Logged in and has preferences - show main app
-            <Stack.Screen name="Main" component={TabNavigator} />
+            <>
+              <Stack.Screen name="Main" component={TabNavigator} />
+              <Stack.Screen name="Settings" component={SettingsScreen} />
+            </>
           )}
         </Stack.Navigator>
       </NavigationContainer>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../context/ThemeContext';
 
 const DIET_OPTIONS = [
   {
@@ -67,6 +68,8 @@ const DIET_OPTIONS = [
 ];
 
 export default function DietTypeStep({ selectedDietTypes, onSelectDietTypes }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   
   const toggleDietType = (dietId) => {
     if (selectedDietTypes.includes(dietId)) {
@@ -122,20 +125,21 @@ export default function DietTypeStep({ selectedDietTypes, onSelectDietTypes }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: theme.background,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#000000',
+    color: theme.text,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: theme.text,
     marginBottom: 20,
   },
   optionsContainer: {
@@ -154,11 +158,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: theme.border,
     position: 'relative',
+    backgroundColor: theme.surface,
   },
   selectedOption: {
-    borderColor: '#48755C',
+    borderColor: theme.primary,
     borderWidth: 2,
   },
   dietImage: {
@@ -169,23 +174,23 @@ const styles = StyleSheet.create({
   placeholderImage: {
     width: '100%',
     height: '70%',
-    backgroundColor: '#F0F0F0',
+    backgroundColor: theme.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   dietInfo: {
     padding: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.surface,
     height: '30%',
   },
   dietTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333333',
+    color: theme.text,
   },
   dietDescription: {
     fontSize: 10,
-    color: '#666666',
+    color: theme.textSecondary,
     marginTop: 2,
   },
   selectedOverlay: {
@@ -194,13 +199,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(72, 117, 92, 0.5)',
+    backgroundColor: theme.mode === 'dark' ? 'rgba(79, 122, 96, 0.5)' : 'rgba(72, 117, 92, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   infoText: {
     fontSize: 14,
-    color: '#999999',
+    color: theme.textSecondary,
     textAlign: 'center',
     marginTop: 20,
     marginBottom: 20,

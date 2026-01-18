@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { doc, setDoc, getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { firebaseApp } from '../../backend/src/firebase';
+import { useTheme } from '../../context/ThemeContext';
 
 // Step components
 import GoalsStep from './GoalsStep';
@@ -28,6 +29,8 @@ const { width } = Dimensions.get('window');
 const STEP_LABELS = ['Goals', 'Diet Type', 'Restrictions', 'Preferences', 'Complete'];
 
 export default function OnboardingQuestionnaire({ navigation, route }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { onIntroComplete } = route.params || {};
   const [currentStep, setCurrentStep] = useState(0);
   const [preferences, setPreferences] = useState({
@@ -141,7 +144,7 @@ export default function OnboardingQuestionnaire({ navigation, route }) {
   const CompletionStep = () => (
     <View style={styles.completionContainer}>
       <View style={styles.completionIconContainer}>
-        <Ionicons name="checkmark-circle" size={100} color="#48755C" />
+        <Ionicons name="checkmark-circle" size={100} color={theme.primary} />
       </View>
 
       <Text style={styles.completionTitle}>All Set!</Text>
@@ -152,7 +155,7 @@ export default function OnboardingQuestionnaire({ navigation, route }) {
 
       <View style={styles.infoCard}>
         <View style={styles.infoCardIconContainer}>
-          <Ionicons name="information-circle" size={24} color="#48755C" />
+          <Ionicons name="information-circle" size={24} color={theme.primary} />
         </View>
         <Text style={styles.infoCardText}>
           You can update your food preferences at any time in your profile settings.
@@ -220,7 +223,7 @@ export default function OnboardingQuestionnaire({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
       {/* Title in progress container instead of separate header */}
       <View style={styles.progressContainer}>
@@ -272,7 +275,7 @@ export default function OnboardingQuestionnaire({ navigation, route }) {
       <View style={styles.footer}>
         {currentStep > 0 && currentStep < 4 && (
           <TouchableOpacity style={styles.prevButton} onPress={handlePrevious}>
-            <Ionicons name="arrow-back" size={18} color="#664E2D" />
+            <Ionicons name="arrow-back" size={18} color={theme.primary} />
             <Text style={styles.prevButtonText}>Previous</Text>
           </TouchableOpacity>
         )}
@@ -293,24 +296,24 @@ export default function OnboardingQuestionnaire({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.background,
   },
   // Modern Progress Indicator Styles (with embedded title)
   progressContainer: {
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 16,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: theme.mode === 'dark' ? '#1E1E1E' : '#F9F9F9',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: theme.border,
   },
   stepTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#48755C',
+    color: theme.primary,
     marginBottom: 16,
   },
   stepsLabelContainer: {
@@ -327,32 +330,32 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: theme.mode === 'dark' ? '#333' : '#E0E0E0',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
     borderWidth: 2,
-    borderColor: '#E0E0E0',
+    borderColor: theme.mode === 'dark' ? '#333' : '#E0E0E0',
   },
   activeStepCircle: {
-    backgroundColor: '#48755C',
-    borderColor: '#48755C',
+    backgroundColor: theme.primary,
+    borderColor: theme.primary,
   },
   stepNumber: {
-    color: '#666',
+    color: theme.textSecondary,
     fontWeight: 'bold',
     fontSize: 14,
   },
   activeStepNumber: {
-    color: '#FFF',
+    color: theme.onPrimary,
   },
   stepLabel: {
     fontSize: 10,
-    color: '#666',
+    color: theme.textSecondary,
     textAlign: 'center',
   },
   activeStepLabel: {
-    color: '#48755C',
+    color: theme.primary,
     fontWeight: 'bold',
   },
   progressBarContainer: {
@@ -361,13 +364,13 @@ const styles = StyleSheet.create({
   },
   progressBarBackground: {
     height: 6,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: theme.mode === 'dark' ? '#333' : '#E0E0E0',
     borderRadius: 3,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#48755C',
+    backgroundColor: theme.primary,
     borderRadius: 3,
   },
   // Content and Footer
@@ -380,39 +383,41 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
+    borderTopColor: theme.border,
   },
   prevButton: {
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: theme.surface,
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   prevButtonText: {
     fontWeight: 'bold',
-    color: '#664E2D',
+    color: theme.primary,
     marginLeft: 6,
   },
   nextButton: {
     paddingVertical: 12,
     paddingHorizontal: 30,
     borderRadius: 25,
-    backgroundColor: '#48755C',
+    backgroundColor: theme.primary,
     marginLeft: 'auto',
     flexDirection: 'row',
     alignItems: 'center',
   },
   nextButtonText: {
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: theme.onPrimary,
   },
   nextButtonIcon: {
     marginLeft: 6,
   },
   finishButton: {
-    backgroundColor: '#664E2D',
+    backgroundColor: theme.primary,
     paddingHorizontal: 40,
   },
   // Completion Step Styles
@@ -426,12 +431,12 @@ const styles = StyleSheet.create({
   completionTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.text,
     marginBottom: 16,
   },
   completionDescription: {
     fontSize: 16,
-    color: '#666',
+    color: theme.textSecondary,
     textAlign: 'center',
     marginBottom: 24,
     paddingHorizontal: 20,
@@ -439,12 +444,12 @@ const styles = StyleSheet.create({
   infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8F5E9',
+    backgroundColor: theme.mode === 'dark' ? '#1E3326' : '#E8F5E9',
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
     borderLeftWidth: 4,
-    borderLeftColor: '#48755C',
+    borderLeftColor: theme.primary,
     width: '90%',
   },
   infoCardIconContainer: {
@@ -453,12 +458,12 @@ const styles = StyleSheet.create({
   infoCardText: {
     flex: 1,
     fontSize: 14,
-    color: '#333',
+    color: theme.text,
     lineHeight: 20,
   },
   preferenceSummary: {
     width: '90%',
-    backgroundColor: '#F9F9F9',
+    backgroundColor: theme.surface,
     borderRadius: 12,
     padding: 16,
     marginTop: 10,
@@ -466,7 +471,7 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.text,
     marginBottom: 12,
     textAlign: 'center',
   },
@@ -476,11 +481,11 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#666',
+    color: theme.textSecondary,
     marginBottom: 4,
   },
   summaryValue: {
     fontSize: 14,
-    color: '#333',
+    color: theme.text,
   },
 });

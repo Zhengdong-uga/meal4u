@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,14 +10,26 @@ import {
   Image,
   Alert,
   SafeAreaView,
-  BackHandler
+  BackHandler,
+  RefreshControl,
+  StatusBar
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../../backend/src/firebase';
-import { doc, getDoc, updateDoc, getFirestore } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, getFirestore, setDoc } from 'firebase/firestore';
+import { PanGestureHandler, State, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, useAnimatedGestureHandler } from 'react-native-reanimated';
+import RecipeCard from '../../components/RecipeCard';
+import EmptyState from '../../components/EmptyState';
+import HapticsService from '../../utils/haptics';
+import { useTheme } from '../../context/ThemeContext';
+import { COLORS } from '../../constants/theme';
 
 export default function EnhancedCalendarScreen({ navigation, route }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   // Helper function to get the current date in YYYY-MM-DD format based on local time
   const getLocalDateString = (date = new Date()) => {
     return date.getFullYear() + "-" +
@@ -32,36 +44,80 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [detailsModalVisible, setDetailsModalVisible] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
-  const [activeTab, setActiveTab] = useState('details');
   const [mealType, setMealType] = useState('breakfast');
   const [loading, setLoading] = useState(true);
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [shoppingList, setShoppingList] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Load meals data from storage
-  useEffect(() => {
-    const loadMeals = async () => {
-      try {
-        const data = await AsyncStorage.getItem('mealPlanData');
-        if (data) {
-          const parsedData = JSON.parse(data);
-          setMealsByDate(parsedData);
-          updateMarkedDates(parsedData);
-        }
-
-        // Set today as default selected date - USING LOCAL DATE STRING
-        const today = getLocalDateString();
-        setSelectedDate(today);
-      } catch (error) {
-        console.error('Error loading meal data:', error);
-        Alert.alert('Error', 'Failed to load your meal plan data');
-      } finally {
-        setLoading(false);
+  // Load meals data from storage and Firestore
+  const loadMeals = useCallback(async (isRefreshing = false) => {
+    if (!isRefreshing) setLoading(true);
+    try {
+      const user = auth.currentUser;
+      let parsedData = {};
+      
+      // Try loading from Firestore first if logged in
+      if (user) {
+          const firestore = getFirestore();
+          const userDocRef = doc(firestore, 'Users', user.uid);
+          const userDoc = await getDoc(userDocRef);
+          if (userDoc.exists() && userDoc.data().mealPlan) {
+              parsedData = userDoc.data().mealPlan;
+              console.log('Loaded meal plan from Firestore');
+          }
       }
-    };
 
-    loadMeals();
+      // If no data from Firestore (or not logged in), try AsyncStorage
+      if (Object.keys(parsedData).length === 0) {
+          const data = await AsyncStorage.getItem('mealPlanData');
+          if (data) {
+              parsedData = JSON.parse(data);
+              console.log('Loaded meal plan from AsyncStorage');
+          }
+      }
+
+      if (Object.keys(parsedData).length > 0) {
+        setMealsByDate(parsedData);
+        // Only update marked dates if we're not refreshing (or if we want to force update)
+        // updateMarkedDates(parsedData); // This depends on selectedDate which might be closure stale if not careful
+        // But since we are updating mealsByDate, the useEffect for saving/marking will trigger? 
+        // No, useEffect [mealsByDate] will trigger saving.
+      } else if (Object.keys(parsedData).length === 0 && isRefreshing) {
+          // If we refreshed and got nothing, maybe clear? Or keep existing?
+          // Keeping existing is safer, but if remote deleted, we should sync.
+          // For now, let's assume empty means empty.
+          // setMealsByDate({}); 
+      }
+
+      // We should update marked dates here to be sure, but need current selectedDate?
+      // Actually, we can just rely on the mealsByDate update to trigger the other effect or just do it here.
+      // Let's rely on the state update.
+      
+    } catch (error) {
+      console.error('Error loading meal data:', error);
+      Alert.alert('Error', 'Failed to load your meal plan data');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    loadMeals();
+  }, [loadMeals]);
+
+  // Update marked dates whenever mealsByDate or selectedDate changes
+  // We already have:
+  // useEffect(() => { ... saveMeals ... updateMarkedDates ... }, [mealsByDate, loading, selectedDate]);
+  // This handles the side effects of mealsByDate changing.
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    HapticsService.light();
+    loadMeals(true);
+  }, [loadMeals]);
 
   // Handle hardware back button
   useEffect(() => {
@@ -81,11 +137,24 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
     return () => backHandler.remove();
   }, [detailsModalVisible]);
 
-  // Save meals data to storage whenever it changes
+  // Save meals data to storage and Firestore whenever it changes
   useEffect(() => {
     const saveMeals = async () => {
       try {
+        // Save to AsyncStorage
         await AsyncStorage.setItem('mealPlanData', JSON.stringify(mealsByDate));
+        
+        // Save to Firestore if logged in
+        const user = auth.currentUser;
+        if (user) {
+            const firestore = getFirestore();
+            const userDocRef = doc(firestore, 'Users', user.uid);
+            await updateDoc(userDocRef, {
+                mealPlan: mealsByDate
+            });
+            console.log('Saved meal plan to Firestore');
+        }
+        
         // Completely rebuild the marked dates to ensure only one date is selected
         updateMarkedDates(mealsByDate);
       } catch (error) {
@@ -172,6 +241,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
     const dateString = day.dateString || getLocalDateString(day);
 
     // Set the selected date
+    HapticsService.selection();
     setSelectedDate(dateString);
 
     // Update marked dates
@@ -179,6 +249,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
   }, [mealsByDate]);
 
   const handleAddMeal = async (type) => {
+    HapticsService.light();
     setModalVisible(false);
   
     try {
@@ -227,6 +298,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
           text: "Delete",
           style: "destructive",
           onPress: () => {
+            HapticsService.medium();
             setMealsByDate(prev => {
               const updatedDateMeals = { ...prev[selectedDate] };
               updatedDateMeals[mealTime].splice(index, 1);
@@ -268,62 +340,212 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
     setSelectedDate(getLocalDateString(today));
   };
 
-  // Render meal section for a specific meal type
-  const renderMealSection = (mealTitle, mealKey) => {
-    const meals = selectedDate && mealsByDate[selectedDate] && mealsByDate[selectedDate][mealKey]
-      ? mealsByDate[selectedDate][mealKey]
-      : [];
+  // Default time mapping for meals that don't have specific times
+  const DEFAULT_TIMES = {
+    breakfast: 8,
+    lunch: 13,
+    snacks: 16,
+    dinner: 19
+  };
+
+  // Helper to format time
+  const formatTime = (hour) => {
+    const ampm = hour >= 12 ? 'pm' : 'am';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:00 ${ampm}`;
+  };
+
+
+  // --- Draggable Event Card Component ---
+  const DraggableEventCard = ({ meal, hour, index, totalMealsInSlot }) => {
+    const translateY = useSharedValue(0);
+    const isDragging = useSharedValue(false);
+    const ROW_HEIGHT = 80; // Assuming fixed row height for calculation
+
+    const mealName = meal?.name;
+    const mealType = meal?.type;
+    const oldTime = meal?.time;
+
+    const panGesture = useAnimatedGestureHandler({
+      onStart: (_, ctx) => {
+        runOnJS(HapticsService.medium)();
+        isDragging.value = true;
+        ctx.startY = translateY.value;
+      },
+      onActive: (event, ctx) => {
+        translateY.value = ctx.startY + event.translationY;
+      },
+      onEnd: (event, ctx) => {
+        runOnJS(HapticsService.light)();
+        isDragging.value = false;
+        // Snap to nearest row
+        const rowOffset = Math.round(translateY.value / ROW_HEIGHT);
+        const newHour = hour + rowOffset;
+        
+        runOnJS(handleDropMeal)(mealName, mealType, oldTime, hour, newHour);
+        translateY.value = withSpring(0); // Reset position after drop
+      },
+    });
+
+    const animatedStyle = useAnimatedStyle(() => {
+      return {
+        transform: [{ translateY: translateY.value }],
+        zIndex: isDragging.value ? 100 : 1,
+        opacity: isDragging.value ? 0.8 : 1,
+        shadowOpacity: isDragging.value ? 0.2 : 0.05,
+        elevation: isDragging.value ? 5 : 1,
+      };
+    });
 
     return (
-      <View style={styles.mealTypeSection}>
-        <View style={styles.mealHeaderRow}>
-          <Text style={styles.mealTypeTitle}>{mealTitle}</Text>
-          <TouchableOpacity
-            style={styles.addMealButton}
-            onPress={() => showAddMealModal(mealKey)}
-          >
-            <Ionicons name="add" size={24} color="#48755C" />
-          </TouchableOpacity>
-        </View>
-
-        {meals.length > 0 ? (
-          <FlatList
-            data={meals}
-            keyExtractor={(item, index) => `${mealKey}-${index}`}
-            renderItem={({ item, index }) => (
-              <View style={styles.recipeRow}>
-                <TouchableOpacity
-                  style={styles.recipeButton}
-                  onPress={() => {
-                    setSelectedRecipe(item);
+      <PanGestureHandler onGestureEvent={panGesture}>
+        <Animated.View style={[
+            styles.eventCard,
+            animatedStyle,
+            {
+                borderTopColor: meal.type === 'dinner' || meal.type === 'snacks' ? (theme.mode === 'dark' ? '#8D6E63' : '#664E2D') : theme.primary,
+                backgroundColor: meal.type === 'dinner' || meal.type === 'snacks' ? (theme.mode === 'dark' ? '#3E2C18' : '#FFFCF9') : (theme.mode === 'dark' ? '#1E3326' : '#F8FDF9')
+            }
+        ]}>
+            <TouchableOpacity
+                onPress={() => {
+                    setSelectedRecipe(meal);
                     setDetailsModalVisible(true);
-                    setActiveTab('details');
-                  }}
-                >
-                  <Text style={styles.mealItem}>{item.name}</Text>
-                  {item.time && <Text style={styles.mealTime}>{item.time}</Text>}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleDeleteMeal(mealKey, index)}
-                >
-                  <Ionicons name="trash-outline" size={20} color="#664E2D" />
-                </TouchableOpacity>
-              </View>
-            )}
-            scrollEnabled={false}
-          />
-        ) : (
-          <View style={styles.emptyMealSlot}>
-            <Text style={styles.emptyMealText}>Tap + to add a meal</Text>
-          </View>
-        )}
-      </View>
+                }}
+                activeOpacity={1} // Prevent opacity change on drag start
+            >
+                <Text style={styles.eventTitle}>{meal.name}</Text>
+                <Text style={styles.eventTime}>
+                    {meal.time || `${formatTime(hour)} • ${meal.type.charAt(0).toUpperCase() + meal.type.slice(1)}`}
+                </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+                style={styles.deleteIcon}
+                onPress={() => {
+                    // Delete logic
+                    const currentMeals = mealsByDate[selectedDate] || {};
+                    const originalIndex = currentMeals[meal.type].findIndex(m => m.name === meal.name);
+                    if (originalIndex !== -1) {
+                        handleDeleteMeal(meal.type, originalIndex);
+                    }
+                }}
+            >
+                <Ionicons name="trash-bin-outline" size={16} color={theme.error} />
+            </TouchableOpacity>
+        </Animated.View>
+      </PanGestureHandler>
     );
   };
 
+  const handleDropMeal = (mealName, mealType, oldTime, oldHour, newHour) => {
+    if (newHour < 6 || newHour > 21) return; // Bounds check (6am - 9pm)
+    if (oldHour === newHour) return;
+    if (!mealName || !mealType) return;
+
+    // Determine new time string
+    const newTime = formatTime(newHour);
+    
+    // Update state
+    setMealsByDate(prev => {
+        const dateMeals = { ...prev[selectedDate] };
+        
+        // 1. Remove from old location (type array)
+        // Since we are organizing by 'type' but displaying by 'time', 
+        // we just update the time property within the same type array 
+        // OR move it to a different type if we wanted to change type based on time.
+        // For now, let's just update the 'time' property.
+        
+        const type = mealType;
+        const typeList = [...dateMeals[type]];
+        const fallbackOldTime = oldTime || formatTime(oldHour);
+        const mealIndex = typeList.findIndex(m => m.name === mealName && (m.time || fallbackOldTime) === fallbackOldTime);
+        
+        if (mealIndex !== -1) {
+            typeList[mealIndex] = { ...typeList[mealIndex], time: newTime };
+            
+            return {
+                ...prev,
+                [selectedDate]: {
+                    ...dateMeals,
+                    [type]: typeList
+                }
+            };
+        }
+        return prev;
+    });
+  };
+
+  // Render the timeline view
+  const renderTimeline = () => {
+    const hours = Array.from({ length: 16 }, (_, i) => i + 6); // 6 AM to 9 PM
+
+    const currentMeals = mealsByDate[selectedDate] || {};
+    
+    // Group meals by hour
+    const mealsByHour = {};
+    
+    ['breakfast', 'lunch', 'dinner', 'snacks'].forEach(type => {
+      if (currentMeals[type]) {
+        currentMeals[type].forEach(meal => {
+          let hour = DEFAULT_TIMES[type];
+          // If meal has a time string like "08:30", try to parse it
+          if (meal.time) {
+            const match = meal.time.match(/(\d+):/);
+            if (match) {
+              const parsed = parseInt(match[1]);
+              // Adjust for PM if needed (basic heuristic or assume 24h if > 12)
+              // This is a simplification. Assuming 24h or standard mapping.
+              if (meal.time.includes('pm') && parsed < 12) hour = parsed + 12;
+              else if (meal.time.includes('am') && parsed === 12) hour = 0;
+              else hour = parsed;
+            }
+          }
+          
+          if (!mealsByHour[hour]) mealsByHour[hour] = [];
+          mealsByHour[hour].push({ ...meal, type });
+        });
+      }
+    });
+
+    return (
+      <ScrollView
+        style={styles.timelineContainer} 
+        contentContainerStyle={styles.timelineContent}
+        refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} tintColor={COLORS.primary} />
+        }
+      >
+        {hours.map(hour => (
+          <View key={hour} style={styles.timeRow}>
+            <View style={styles.timeLabelContainer}>
+              <Text style={styles.timeLabel}>{formatTime(hour)}</Text>
+            </View>
+            <View style={[styles.timeSlot, { borderLeftWidth: 1, borderLeftColor: '#EFEFEF', paddingLeft: 10 }]}>
+              <View style={styles.timeLine} />
+              {mealsByHour[hour] && mealsByHour[hour].map((meal, index) => (
+                <DraggableEventCard 
+                    key={`${hour}-${index}`}
+                    meal={meal}
+                    hour={hour}
+                    index={index}
+                    totalMealsInSlot={mealsByHour[hour].length}
+                />
+              ))}
+            </View>
+          </View>
+        ))}
+        <View style={{ height: 80 }} /> 
+      </ScrollView>
+    );
+  };
+
+  // State for FAB menu
+  const [fabOpen, setFabOpen] = useState(false);
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
+        <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
         <Text>Loading your meal plans...</Text>
       </View>
     );
@@ -334,43 +556,25 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
 
 
       <View style={styles.calendarContainer}>
+        <View style={styles.headerContainer}>
+           <Text style={styles.headerTitle}>Check-Ins</Text>
+           <View style={styles.monthSelector}>
+             <Text style={styles.monthText}>
+               {new Date(currentWeek.getTime() + 86400000 * 2).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+             </Text>
+             <Ionicons name="chevron-down-outline" size={20} color="#000" />
+           </View>
+        </View>
+
         {/* Week view */}
         <View style={styles.weekViewContainer}>
-          <View style={styles.weekNavigation}>
-            <TouchableOpacity
-              onPress={() => {
-                const prevWeek = new Date(currentWeek);
-                prevWeek.setDate(prevWeek.getDate() - 7);
-                setCurrentWeek(prevWeek);
-              }}
-              style={styles.weekNavButton}
-            >
-              <Ionicons name="chevron-back" size={24} color="#48755C" />
-            </TouchableOpacity>
-
-            <Text style={styles.weekViewTitle}>
-              {new Date(currentWeek.getTime() + 86400000 * 2).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => {
-                const nextWeek = new Date(currentWeek);
-                nextWeek.setDate(nextWeek.getDate() + 7);
-                setCurrentWeek(nextWeek);
-              }}
-              style={styles.weekNavButton}
-            >
-              <Ionicons name="chevron-forward" size={24} color="#48755C" />
-            </TouchableOpacity>
-          </View>
-
           <View style={styles.weekDaysContainer}>
             {getWeekDates().map((date, index) => {
-              const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index];
-              const dateObj = new Date(date + 'T12:00:00'); // Using noon to avoid timezone issues
+              const dayName = ['S', 'M', 'T', 'W', 'T', 'F', 'S'][index]; // Single letter
+              const dateObj = new Date(date + 'T12:00:00'); 
               const dayNumber = dateObj.getDate();
               const isSelected = date === selectedDate;
-              const isToday = date === getLocalDateString(); // UPDATED FOR LOCAL DATE STRING
+              const isToday = date === getLocalDateString();
               const hasMeals = mealsByDate[date] && (
                 (mealsByDate[date].breakfast && mealsByDate[date].breakfast.length > 0) ||
                 (mealsByDate[date].lunch && mealsByDate[date].lunch.length > 0) ||
@@ -384,7 +588,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
                   style={[
                     styles.weekDay,
                     isSelected && styles.selectedWeekDay,
-                    isToday && styles.todayWeekDay
+                    isToday && !isSelected && styles.todayWeekDay
                   ]}
                   onPress={() => handleDayPress({ dateString: date })}
                 >
@@ -411,150 +615,98 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
         </View>
       </View>
 
-      <ScrollView style={styles.mealPlanContainer}>
-        <View style={styles.selectedDateContainer}>
-          <Text style={styles.selectedDateText}>
-            {selectedDate ? new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'Select a Date'}
-          </Text>
-          {selectedDate && (
-            <View style={styles.selectedDateIndicator} />
-          )}
-        </View>
-
+      <View style={styles.mealPlanContainer}>
         {selectedDate ? (
-          <>
-            {renderMealSection('Breakfast', 'breakfast')}
-            {renderMealSection('Lunch', 'lunch')}
-            {renderMealSection('Dinner', 'dinner')}
-            {renderMealSection('Snacks', 'snacks')}
-          </>
+          renderTimeline()
         ) : (
-          <View style={styles.noDateSelected}>
-            <Text style={styles.noDateText}>Please select a date to view or add meals</Text>
-          </View>
+          <EmptyState 
+            icon="calendar-outline" 
+            title="No Date Selected" 
+            message="Please select a date above to view or add meals to your plan."
+            imageSource={null}
+          />
         )}
-      </ScrollView>
+      </View>
+
+      {/* FAB */}
+      <TouchableOpacity 
+        style={styles.fab}
+        onPress={() => {
+            HapticsService.light();
+            setFabOpen(!fabOpen);
+        }}
+      >
+        <Ionicons name={fabOpen ? "close-outline" : "add-outline"} size={30} color="#FFF" />
+      </TouchableOpacity>
+      
+      {fabOpen && (
+        <View style={styles.fabMenu}>
+          {['Breakfast', 'Lunch', 'Snacks', 'Dinner'].map((type) => (
+             <TouchableOpacity 
+               key={type}
+               style={styles.fabMenuItem}
+               onPress={() => {
+                 HapticsService.light();
+                 setFabOpen(false);
+                 showAddMealModal(type.toLowerCase());
+               }}
+             >
+               <Text style={styles.fabMenuText}>{type}</Text>
+               <View style={styles.fabMenuIcon}>
+                 <Ionicons name="restaurant-outline" size={20} color="#FFF" />
+               </View>
+             </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* Recipe Details Modal */}
       <Modal
         visible={detailsModalVisible}
-        transparent={true}
+        transparent={false} // Make it full screen opaque to match standard screen feel
         animationType="slide"
         onRequestClose={() => setDetailsModalVisible(false)}
-        statusBarTranslucent={true}
+        statusBarTranslucent={false} // Match standard SafeAreaView behavior
       >
         <SafeAreaView style={styles.modalContainer}>
-
-
           <ScrollView
             style={styles.modalScrollView}
-            showsVerticalScrollIndicator={true}
+            showsVerticalScrollIndicator={false}
             bounces={true}
+            contentContainerStyle={{ paddingBottom: 20 }}
           >
-            <View style={styles.recipeCard}>
-              {selectedRecipe?.image && (
-                <Image
-                  source={{ uri: selectedRecipe.image }}
-                  style={styles.recipeImage}
-                  resizeMode="cover"
-                />
-              )}
-
-              <Text style={styles.recipeName}>{selectedRecipe?.name || 'Recipe'}</Text>
-
-              <View style={styles.recipeInfo}>
-                {selectedRecipe?.time && (
-                  <View style={styles.infoItem}>
-                    <Ionicons name="time-outline" size={18} color="#664E2D" />
-                    <Text style={styles.infoText}>{selectedRecipe.time}</Text>
-                  </View>
-                )}
-                {selectedRecipe?.servings && (
-                  <View style={styles.infoItem}>
-                    <Ionicons name="people-outline" size={18} color="#664E2D" />
-                    <Text style={styles.infoText}>{selectedRecipe.servings} servings</Text>
-                  </View>
-                )}
-                {selectedRecipe?.difficulty && (
-                  <View style={styles.infoItem}>
-                    <Ionicons name="speedometer-outline" size={18} color="#664E2D" />
-                    <Text style={styles.infoText}>{selectedRecipe.difficulty}</Text>
-                  </View>
-                )}
-              </View>
-
-              <View style={styles.tabContainer}>
-                <TouchableOpacity
-                  style={[styles.tabButton, activeTab === 'details' && styles.activeTab]}
-                  onPress={() => setActiveTab('details')}
-                >
-                  <Text style={[styles.tabText, activeTab === 'details' && styles.activeTabText]}>Ingredients</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.tabButton, activeTab === 'instructions' && styles.activeTab]}
-                  onPress={() => setActiveTab('instructions')}
-                >
-                  <Text style={[styles.tabText, activeTab === 'instructions' && styles.activeTabText]}>Instructions</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.tabButton, activeTab === 'nutrition' && styles.activeTab]}
-                  onPress={() => setActiveTab('nutrition')}
-                >
-                  <Text style={[styles.tabText, activeTab === 'nutrition' && styles.activeTabText]}>Nutrition</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.tabContent}>
-                {activeTab === 'details' && (
-                  <View style={styles.ingredientsContainer}>
-                    {selectedRecipe?.ingredients?.map((ingredient, index) => (
-                      <View key={index} style={styles.ingredientRow}>
-                        <Ionicons name="checkmark-circle-outline" size={20} color="#48755C" />
-                        <Text style={styles.ingredientItem}>{ingredient}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {activeTab === 'instructions' && (
-                  <View style={styles.instructionsContainer}>
-                    {selectedRecipe?.instructions?.map((instruction, index) => (
-                      <View key={index} style={styles.instructionRow}>
-                        <View style={styles.instructionNumber}>
-                          <Text style={styles.stepNumber}>{index + 1}</Text>
-                        </View>
-                        <Text style={styles.instructionText}>{instruction}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {activeTab === 'nutrition' && (
-                  <View style={styles.nutritionContainer}>
-                    {selectedRecipe?.nutrition ? (
-                      <>
-                        {Object.entries(selectedRecipe.nutrition).map(([key, value], index) => (
-                          <View key={index} style={styles.nutritionRow}>
-                            <Text style={styles.nutritionLabel}>{key}</Text>
-                            <Text style={styles.nutritionValue}>{value}</Text>
-                          </View>
-                        ))}
-                      </>
-                    ) : (
-                      <Text style={styles.noNutritionText}>Nutrition information not available</Text>
-                    )}
-                  </View>
-                )}
-              </View>
-
-              {/* Close button at the bottom */}
-              <TouchableOpacity
-                style={styles.closeButtonBottom}
-                onPress={() => setDetailsModalVisible(false)}
-              >
-                <Text style={styles.closeButtonText}>Close Recipe</Text>
-              </TouchableOpacity>
-            </View>
+            <RecipeCard 
+              recipe={selectedRecipe}
+              userIngredients={[]} // We don't have user ingredients context here yet
+              onBack={() => setDetailsModalVisible(false)}
+              onDiscard={() => {
+                // Logic to discard/delete the meal
+                if (selectedRecipe && selectedRecipe.type) {
+                   const currentMeals = mealsByDate[selectedDate] || {};
+                   const typeMeals = currentMeals[selectedRecipe.type];
+                   if (typeMeals) {
+                      const idx = typeMeals.findIndex(m => m.name === selectedRecipe.name);
+                      if (idx !== -1) {
+                         Alert.alert(
+                            "Remove Meal",
+                            "Are you sure you want to remove this meal from your plan?",
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              { 
+                                text: "Remove", 
+                                style: "destructive",
+                                onPress: () => {
+                                  handleDeleteMeal(selectedRecipe.type, idx);
+                                  setDetailsModalVisible(false);
+                                }
+                              }
+                            ]
+                         );
+                      }
+                   }
+                }
+              }}
+            />
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -599,355 +751,229 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'light grey'
+    backgroundColor: theme.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FBF0E9'
+    backgroundColor: theme.background,
   },
 
   calendarContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    margin: 10,
-    elevation: 3,
+    backgroundColor: theme.surface,
+    paddingTop: 10,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 10,
+    zIndex: 10,
+  },
+  headerContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.text,
+    marginBottom: 5,
+  },
+  monthSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  monthText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: theme.text,
+    marginRight: 5,
   },
   weekViewContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 10,
-  },
-  weekNavigation: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 5,
-  },
-  weekNavButton: {
-    padding: 5,
-  },
-  weekViewTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#664E2D',
+    paddingHorizontal: 15,
   },
   weekDaysContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 10,
   },
   weekDay: {
-    flex: 1,
     alignItems: 'center',
-    padding: 8, // Reduced from 12
-    borderRadius: 10,
-    margin: 1, // Reduced from 2
-    minWidth: 40, // Ensure minimum width
+    paddingVertical: 10,
+    paddingHorizontal: 5,
+    borderRadius: 12,
+    width: 45,
   },
-  
   selectedWeekDay: {
-    backgroundColor: '#48755C',
+    backgroundColor: theme.primary,
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
   },
   todayWeekDay: {
-    borderWidth: 1,
-    borderColor: '#48755C',
+    // borderWidth: 1,
+    // borderColor: theme.primary,
   },
   weekDayName: {
     fontSize: 12,
-    color: '#664E2D',
-    marginBottom: 5,
-    fontWeight: '500',
-    flexShrink: 1,
-    width: '100%',
-    textAlign: 'center',
+    color: theme.textSecondary,
+    marginBottom: 8,
+    fontWeight: '600',
   },
   weekDayNumber: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#2d4150',
+    color: theme.text,
   },
   selectedWeekDayText: {
-    color: '#FFFFFF',
+    color: theme.onPrimary,
   },
   weekDayDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#48755C',
-    marginTop: 4,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.primary,
+    marginTop: 6,
   },
   selectedWeekDayDot: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.onPrimary,
   },
   mealPlanContainer: {
     flex: 1,
-    padding: 10,
+    backgroundColor: theme.background,
   },
-  selectedDateContainer: {
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  selectedDateText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#664E2D',
-    textAlign: 'center',
-  },
-  selectedDateIndicator: {
-    height: 3,
-    width: 50,
-    backgroundColor: '#48755C',
-    borderRadius: 2,
-    marginTop: 5,
-  },
-  mealTypeSection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 15,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  mealHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  mealTypeTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#664E2D',
-  },
-  addMealButton: {
-    padding: 5,
-  },
-  recipeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F8F8F8',
-    padding: 12,
-    marginVertical: 5,
-    borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: '#B8CCBA',
-  },
-  recipeButton: {
+  timelineContainer: {
     flex: 1,
   },
-  mealItem: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#2E2E2E',
+  timelineContent: {
+    paddingVertical: 20,
+    paddingHorizontal: 20,
   },
-  mealTime: {
+  timeRow: {
+    flexDirection: 'row',
+    minHeight: 80,
+  },
+  timeLabelContainer: {
+    width: 60,
+    alignItems: 'flex-start',
+  },
+  timeLabel: {
     fontSize: 12,
-    color: '#666666',
-    marginTop: 2,
+    color: theme.textSecondary,
+    transform: [{ translateY: -8 }], // Align with the line
   },
-  emptyMealSlot: {
-    padding: 15,
-    backgroundColor: '#F8F8F8',
-    borderRadius: 8,
-    alignItems: 'center',
+  timeSlot: {
+    flex: 1,
+    borderTopWidth: 1,
+    borderTopColor: theme.border,
+    paddingBottom: 10,
   },
-  emptyMealText: {
-    color: '#999999',
+  timeLine: {
+    // position: 'absolute',
+    // top: 0,
+    // left: 0,
+    // right: 0,
+    // height: 1,
+    // backgroundColor: '#EFEFEF',
+  },
+  eventCard: {
+    borderRadius: 6,
+    padding: 12,
+    marginTop: 5,
+    marginBottom: 5,
+    borderTopWidth: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  eventTitle: {
     fontSize: 14,
+    fontWeight: '600',
+    color: theme.primary,
+    marginBottom: 2,
+  },
+  eventTime: {
+    fontSize: 12,
+    color: theme.textSecondary,
+  },
+  deleteIcon: {
+    position: 'absolute',
+    right: 10,
+    top: 10,
   },
   noDateSelected: {
-    padding: 30,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  noDateText: {
-    fontSize: 16,
-    color: '#664E2D',
-    textAlign: 'center',
+  fab: {
+    position: 'absolute',
+    bottom: 30,
+    right: 30,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: theme.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    zIndex: 100,
+  },
+  fabMenu: {
+    position: 'absolute',
+    bottom: 100,
+    right: 30,
+    alignItems: 'flex-end',
+    zIndex: 99,
+  },
+  fabMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  fabMenuText: {
+    backgroundColor: theme.surface,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginRight: 10,
+    elevation: 2,
+    color: theme.primary,
+    fontWeight: '600',
+  },
+  fabMenuIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
   },
 
   // Modal styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#FBF0E9',
+    backgroundColor: theme.background,
   },
   modalScrollView: {
     flex: 1,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 15,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
-    zIndex: 10,
-  },
-  backButton: {
-    padding: 8,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#664E2D',
-  },
-  recipeCard: {
-    margin: 15,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    padding: 15,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  recipeImage: {
-    height: 200,
-    width: '100%',
-    borderRadius: 10,
-    marginBottom: 15,
-  },
-  recipeName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#664E2D',
-    marginBottom: 10,
-  },
-  recipeInfo: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 15,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 15,
-    marginBottom: 5,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#664E2D',
-    marginLeft: 5,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F0F0F0',
-    borderRadius: 10,
-    marginBottom: 15,
-  },
-  tabButton: {
-    flex: 1,
-    padding: 12,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  activeTab: {
-    backgroundColor: '#B8CCBA',
-  },
-  tabText: {
-    fontWeight: '500',
-    color: '#664E2D',
-  },
-  activeTabText: {
-    fontWeight: 'bold',
-    color: '#48755C',
-  },
-  tabContent: {
-    minHeight: 100,
-    maxHeight: 1000,
-  },
-  ingredientsContainer: {
-    paddingBottom: 20,
-  },
-  ingredientRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  ingredientItem: {
-    fontSize: 16,
-    color: '#2E2E2E',
-    marginLeft: 10,
-    flex: 1,
-  },
-  instructionsContainer: {
-    paddingBottom: 20,
-  },
-  instructionRow: {
-    flexDirection: 'row',
-    marginBottom: 15,
-  },
-  instructionNumber: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#48755C',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  stepNumber: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  instructionText: {
-    fontSize: 16,
-    color: '#2E2E2E',
-    flex: 1,
-    lineHeight: 22,
-  },
-  nutritionContainer: {
-    paddingBottom: 20,
-  },
-  nutritionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
-  },
-  nutritionLabel: {
-    fontSize: 16,
-    color: '#664E2D',
-  },
-  nutritionValue: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#48755C',
-  },
-  noNutritionText: {
-    fontSize: 16,
-    color: '#999999',
-    textAlign: 'center',
-    padding: 20,
-  },
-  closeButtonBottom: {
-    backgroundColor: '#48755C',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  closeButtonText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 16,
+    backgroundColor: theme.background,
   },
 
   // Add Meal Modal
@@ -959,7 +985,7 @@ const styles = StyleSheet.create({
   },
   modalView: {
     width: '85%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.surface,
     borderRadius: 15,
     padding: 20,
     alignItems: 'center',
@@ -975,14 +1001,14 @@ const styles = StyleSheet.create({
   modalText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#664E2D',
+    color: theme.text,
     marginBottom: 20,
     textAlign: 'center',
   },
   modalButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#48755C',
+    backgroundColor: theme.primary,
     width: '100%',
     padding: 15,
     borderRadius: 10,
@@ -990,16 +1016,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalButtonText: {
-    color: '#FFFFFF',
+    color: theme.onPrimary,
     fontWeight: 'bold',
     fontSize: 16,
     marginLeft: 10,
   },
   cancelButton: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: theme.mode === 'dark' ? '#333' : '#F0F0F0',
   },
   cancelButtonText: {
-    color: '#664E2D',
+    color: theme.textSecondary,
     fontWeight: 'bold',
     fontSize: 16,
   }

@@ -13,7 +13,10 @@ import {
     Animated,
     SafeAreaView,
     StatusBar,
-    ScrollView
+    ScrollView,
+    LayoutAnimation,
+    Platform,
+    UIManager
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import dayjs from 'dayjs';
@@ -22,9 +25,20 @@ import { auth } from '../../backend/src/firebase';
 import { doc, getDoc, updateDoc, getFirestore } from 'firebase/firestore';
 import { ask_gemini } from '../../backend/api.js';
 import LottieView from 'lottie-react-native';
+import HapticsService from '../../utils/haptics';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android') {
+  if (UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
+}
 
 // Loading Animation Modal Component
 const LoadingModal = ({ visible, mealType }) => {
+    const { theme } = useTheme();
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
+
     if (!visible) return null;
 
     // Determine animation source and loading text based on meal type
@@ -133,10 +147,19 @@ const Toast = ({ visible, message, type }) => {
     );
 };
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useIsFocused } from '@react-navigation/native';
+
+import { useTheme } from '../../context/ThemeContext';
+
 export default function AIScreen({ navigation }) {
+    const { theme } = useTheme();
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
+    const isFocused = useIsFocused();
     const [ingredientInput, setIngredientInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [preferencesModalVisible, setPreferencesModalVisible] = useState(false);
+    const [lastRecipe, setLastRecipe] = useState(null);
 
     // Toast state
     const [toast, setToast] = useState({
@@ -179,6 +202,23 @@ export default function AIScreen({ navigation }) {
     };
 
     useEffect(() => {
+        const loadLastRecipe = async () => {
+            try {
+                const stored = await AsyncStorage.getItem('last_generated_recipe');
+                if (stored) {
+                    setLastRecipe(JSON.parse(stored));
+                }
+            } catch (e) {
+                console.error("Failed to load last recipe", e);
+            }
+        };
+        
+        if (isFocused) {
+            loadLastRecipe();
+        }
+    }, [isFocused]);
+
+    useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
                 const firestore = getFirestore();
@@ -211,26 +251,33 @@ export default function AIScreen({ navigation }) {
 
     const handleAddIngredient = () => {
         if (ingredientInput.trim()) {
+            HapticsService.light();
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setIngredients([...ingredients, ingredientInput.trim()]);
             setIngredientInput('');
         }
     };
 
     const handleRemoveIngredient = (ingredient) => {
+        HapticsService.medium();
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setIngredients(ingredients.filter(item => item !== ingredient));
     };
 
     const handlePreferenceSelect = (key, value) => {
+        HapticsService.selection();
         setPreferences((prev) => ({ ...prev, [key]: value }));
     };
 
     const savePreferences = () => {
+        HapticsService.success();
         setPreferencesModalVisible(false);
         // Show the custom toast instead of alert
         showToast('Preferences applied!', 'success');
     };
 
     const clearPreferences = () => {
+        HapticsService.medium();
         setPreferences({
             prepareTime: '',
             dishType: '',
@@ -241,10 +288,12 @@ export default function AIScreen({ navigation }) {
     const handleGenerateRecipe = async () => {
         // Check if meal type is selected
         if (!mealType) {
+            HapticsService.error();
             showToast('Please select a meal type', 'error');
             return;
         }
 
+        HapticsService.heavy();
         setLoading(true);
         const { prepareTime, dishType } = preferences;
 
@@ -274,6 +323,18 @@ export default function AIScreen({ navigation }) {
                 notes: ['Generated with AI based on your preferences.'],
             };
 
+            // Save to local storage for recovery
+            try {
+                const storageData = {
+                    recipe: generatedRecipe,
+                    userIngredients: ingredients
+                };
+                await AsyncStorage.setItem('last_generated_recipe', JSON.stringify(storageData));
+                setLastRecipe(storageData); // Update state to store full object
+            } catch (e) {
+                console.error("Failed to save recipe locally", e);
+            }
+
             const user = auth.currentUser;
             if (user) {
                 const firestore = getFirestore();
@@ -288,7 +349,10 @@ export default function AIScreen({ navigation }) {
                 }
             };
 
-            navigation.navigate('GeneratedRecipe', { recipe: generatedRecipe });
+            navigation.navigate('GeneratedRecipe', { 
+                recipe: generatedRecipe,
+                userIngredients: ingredients 
+            });
         } catch (error) {
             console.error('Error generating recipe:', error);
             showToast('Failed to generate recipe. Please try again.', 'error');
@@ -316,11 +380,14 @@ export default function AIScreen({ navigation }) {
                 </View>
                 <TouchableOpacity
                     style={styles.preferenceButton}
-                    onPress={() => setPreferencesModalVisible(true)}
+                    onPress={() => {
+                        HapticsService.light();
+                        setPreferencesModalVisible(true);
+                    }}
                     activeOpacity={0.7}
                 >
                     <View style={styles.iconContainer}>
-                        <Ionicons name="options-outline" size={20} color="#48755C" />
+                        <Ionicons name="options" size={20} color="#48755C" />
                     </View>
                 </TouchableOpacity>
             </View>
@@ -332,19 +399,54 @@ export default function AIScreen({ navigation }) {
             >
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                     <View style={styles.contentContainer}>
+                        
+                        {/* Resume Last Recipe Card */}
+                        {lastRecipe && lastRecipe.recipe && (
+                            <TouchableOpacity
+                                style={styles.resumeCard}
+                                onPress={() => {
+                                    HapticsService.light();
+                                    navigation.navigate('GeneratedRecipe', { 
+                                    recipe: lastRecipe.recipe,
+                                    userIngredients: lastRecipe.userIngredients || [] 
+                                })}}
+                                activeOpacity={0.8}
+                            >
+                                <View style={styles.resumeContent}>
+                                    <View style={styles.resumeIconContainer}>
+                                        <Ionicons name="receipt-outline" size={20} color="#FFFFFF" />
+                                    </View>
+                                    <View style={styles.resumeTextContainer}>
+                                        <Text style={styles.resumeLabel}>Continue Cooking</Text>
+                                        <Text style={styles.resumeRecipeName} numberOfLines={1}>
+                                            {lastRecipe.recipe.name}
+                                        </Text>
+                                    </View>
+                                </View>
+                                <Ionicons name="chevron-forward" size={24} color="#48755C" />
+                            </TouchableOpacity>
+                        )}
+
                         <View style={styles.card}>
                             <Text style={styles.question}>What ingredients do you have?</Text>
-                            <View style={styles.ingredientInputContainer}>
+                            
+                            <View style={styles.searchBarContainer}>
+                                <Ionicons name="search-outline" size={20} color="#999" style={styles.searchIcon} />
                                 <TextInput
-                                    style={styles.ingredientInput}
-                                    placeholder="Add ingredients..."
+                                    style={styles.searchInput}
+                                    placeholder="Add ingredients (e.g., Avocado)..."
                                     placeholderTextColor="#999"
                                     value={ingredientInput}
                                     onChangeText={setIngredientInput}
                                     onSubmitEditing={handleAddIngredient}
                                     returnKeyType="done"
                                 />
+                                <TouchableOpacity onPress={handleAddIngredient} style={styles.addIconBtn}>
+                                   <Ionicons name="add-circle-outline" size={32} color="#48755C" />
+                                </TouchableOpacity>
+                            </View>
 
+                            <View style={styles.ingredientInputContainer}>
                                 <View style={styles.quickSuggestionsContainer}>
                                     <Text style={styles.suggestionsLabel}>Quick add:</Text>
                                     <ScrollView
@@ -357,11 +459,14 @@ export default function AIScreen({ navigation }) {
                                                 key={item}
                                                 style={styles.suggestionPill}
                                                 onPress={() => {
+                                                    HapticsService.light();
+                                                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                                                     setIngredients([...ingredients, item]);
                                                 }}
                                                 activeOpacity={0.7}
                                             >
                                                 <Text style={styles.suggestionText}>{item}</Text>
+                                                <Ionicons name="add-outline" size={14} color="#664E2D" style={{marginLeft: 4}} />
                                             </TouchableOpacity>
                                         ))}
                                     </ScrollView>
@@ -369,18 +474,28 @@ export default function AIScreen({ navigation }) {
 
                                 {ingredients.length > 0 && (
                                     <View style={styles.ingredientsContainer}>
+                                        <Text style={styles.sectionLabel}>Your Basket:</Text>
                                         <View style={styles.ingredientsGrid}>
-                                            {ingredients.map((item, index) => (
+                                            {ingredients.map((item, index) => {
+                                                // Generate a deterministic pastel color index based on item length
+                                                const colorIndex = item.length % 4;
+                                                const bgColors = ['#E8F5E9', '#E3F2FD', '#FFF3E0', '#F3E5F5'];
+                                                const borderColors = ['#C8E6C9', '#BBDEFB', '#FFE0B2', '#E1BEE7'];
+                                                const textColors = ['#2E7D32', '#1565C0', '#EF6C00', '#7B1FA2'];
+                                                
+                                                return (
                                                 <TouchableOpacity
-                                                    key={index.toString()}
-                                                    style={styles.ingredient}
+                                                    key={`${item}-${index}`}
+                                                    style={[styles.ingredientChip, { backgroundColor: bgColors[colorIndex], borderColor: borderColors[colorIndex] }]}
                                                     onPress={() => handleRemoveIngredient(item)}
                                                     activeOpacity={0.7}
                                                 >
-                                                    <Text style={styles.ingredientText}>{item}</Text>
-                                                    <Ionicons name="close-circle" size={16} color="#48755C" />
+                                                    <Text style={[styles.ingredientText, { color: textColors[colorIndex] }]}>{item}</Text>
+                                                    <View style={[styles.removeIconContainer, { backgroundColor: textColors[colorIndex] }]}>
+                                                      <Ionicons name="close-outline" size={10} color="#FFFFFF" />
+                                                    </View>
                                                 </TouchableOpacity>
-                                            ))}
+                                            )})}
                                         </View>
                                     </View>
                                 )}
@@ -388,40 +503,46 @@ export default function AIScreen({ navigation }) {
                         </View>
 
                         <View style={styles.card}>
-                            <Text style={styles.question}>Would you like to add more ingredients to the meal?</Text>
-                            <View style={styles.optionContainer}>
+                            <Text style={styles.question}>Should we add extra ingredients?</Text>
+                            <View style={styles.toggleContainer}>
                                 <TouchableOpacity
                                     style={[
-                                        styles.optionButton,
-                                        suggestionsNeeded === true ? styles.selectedOption : null
+                                        styles.toggleButton,
+                                        suggestionsNeeded === false && styles.activeToggle
                                     ]}
-                                    onPress={() => setSuggestionsNeeded(true)}
-                                    activeOpacity={0.7}
+                                    onPress={() => {
+                                        HapticsService.light();
+                                        setSuggestionsNeeded(false);
+                                    }}
+                                    activeOpacity={0.8}
                                 >
                                     <Text
                                         style={[
-                                            styles.optionText,
-                                            suggestionsNeeded === true && styles.selectedOptionText,
+                                            styles.toggleText,
+                                            suggestionsNeeded === false && styles.activeToggleText
                                         ]}
                                     >
-                                        Yes
+                                        Strictly My Fridge
                                     </Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[
-                                        styles.optionButton,
-                                        suggestionsNeeded === false ? styles.selectedOption : null
+                                        styles.toggleButton,
+                                        suggestionsNeeded === true && styles.activeToggle
                                     ]}
-                                    onPress={() => setSuggestionsNeeded(false)}
-                                    activeOpacity={0.7}
+                                    onPress={() => {
+                                        HapticsService.light();
+                                        setSuggestionsNeeded(true);
+                                    }}
+                                    activeOpacity={0.8}
                                 >
                                     <Text
                                         style={[
-                                            styles.optionText,
-                                            suggestionsNeeded === false && styles.selectedOptionText,
+                                            styles.toggleText,
+                                            suggestionsNeeded === true && styles.activeToggleText
                                         ]}
                                     >
-                                        No
+                                        Shop for More
                                     </Text>
                                 </TouchableOpacity>
                             </View>
@@ -441,25 +562,42 @@ export default function AIScreen({ navigation }) {
                         </View>
 
                         <View style={styles.card}>
-                            <Text style={styles.question}>What type of meal?</Text>
+                            <Text style={styles.question}>What are you craving?</Text>
                             <View style={styles.mealTypeContainer}>
-                                {['Meals', 'Drinks', 'Dessert'].map((type) => (
+                                {[
+                                { type: 'Meals', icon: 'restaurant-outline' },
+                                { type: 'Drinks', icon: 'cafe-outline' },
+                                { type: 'Dessert', icon: 'ice-cream-outline' }
+                                ].map((item) => (
                                     <TouchableOpacity
-                                        key={type}
+                                        key={item.type}
                                         style={[
-                                            styles.mealTypeButton,
-                                            mealType === type ? styles.selectedOption : null
+                                            styles.mealTypeCard,
+                                            mealType === item.type && styles.selectedMealTypeCard
                                         ]}
-                                        onPress={() => setMealType(type)}
-                                        activeOpacity={0.7}
+                                        onPress={() => {
+                                            HapticsService.selection();
+                                            setMealType(item.type);
+                                        }}
+                                        activeOpacity={0.8}
                                     >
+                                        <View style={[
+                                            styles.mealTypeIconContainer,
+                                            mealType === item.type && styles.selectedMealTypeIconContainer
+                                        ]}>
+                                            <Ionicons 
+                                                name={item.icon} 
+                                                size={28} 
+                                                color={mealType === item.type ? '#FFFFFF' : '#664E2D'} 
+                                            />
+                                        </View>
                                         <Text
                                             style={[
                                                 styles.mealTypeText,
-                                                mealType === type && styles.selectedOptionText,
+                                                mealType === item.type && styles.selectedMealTypeText,
                                             ]}
                                         >
-                                            {type}
+                                            {item.type}
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
@@ -491,7 +629,7 @@ export default function AIScreen({ navigation }) {
                                 <ActivityIndicator size="small" color="white" />
                             ) : (
                                 <>
-                                    <Ionicons name="bulb-outline" size={20} color="white" style={styles.buttonIcon} />
+                                    <Ionicons name="color-wand-outline" size={20} color="white" style={styles.buttonIcon} />
                                     <Text style={styles.generateButtonText}>Generate Recipe</Text>
                                 </>
                             )}
@@ -580,10 +718,10 @@ export default function AIScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: 'white',
+        backgroundColor: theme.background,
     },
     scrollContainer: {
         flex: 1,
@@ -600,7 +738,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     loadingModalContent: {
-        backgroundColor: 'white',
+        backgroundColor: theme.surface,
         borderRadius: 16,
         padding: 20,
         alignItems: 'center',
@@ -622,7 +760,7 @@ const styles = StyleSheet.create({
     loadingText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#664E2D',
+        color: theme.primary,
         marginTop: 10,
         textAlign: 'center',
     },
@@ -632,7 +770,7 @@ const styles = StyleSheet.create({
         top: 60,
         left: '5%',
         right: '5%',
-        backgroundColor: '#48755C',
+        backgroundColor: theme.success,
         padding: 14,
         borderRadius: 12,
         flexDirection: 'row',
@@ -648,7 +786,7 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     toastText: {
-        color: 'white',
+        color: theme.onPrimary,
         marginLeft: 10,
         fontSize: 15,
         fontWeight: '500',
@@ -659,9 +797,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 12,
-        backgroundColor: 'white',
+        backgroundColor: theme.surface,
         borderBottomWidth: 1,
-        borderBottomColor: '#F5EAE1',
+        borderBottomColor: theme.border,
     },
     dateContainer: {
         justifyContent: 'center',
@@ -669,11 +807,11 @@ const styles = StyleSheet.create({
     dayText: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#49351C',
+        color: theme.text,
     },
     dateText: {
         fontSize: 14,
-        color: 'grey',
+        color: theme.textSecondary,
         marginTop: 4,
     },
     preferenceButton: {
@@ -683,204 +821,285 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#F5EAE1',
+        backgroundColor: theme.mode === 'dark' ? '#2C3E33' : '#F5EAE1',
         justifyContent: 'center',
         alignItems: 'center',
     },
     card: {
-        backgroundColor: 'white',
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 16,
-        shadowColor: '#000',
+        backgroundColor: theme.surface,
+        borderRadius: 24, // Softer corners
+        padding: 20,
+        marginBottom: 20,
+        shadowColor: theme.primary,
         shadowOffset: {
             width: 0,
-            height: 1,
+            height: 4,
         },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 2,
-        borderColor: '#F5EAE1',
-        borderWidth: 1,
+        shadowOpacity: 0.08, // Softer shadow
+        shadowRadius: 12,
+        elevation: 3,
+        // borderColor: '#F5EAE1',
+        // borderWidth: 1,
     },
     question: {
-        fontSize: 16,
+        fontSize: 18,
         marginBottom: 16,
-        color: '#664E2D',
-        fontWeight: '600',
+        color: theme.text, // Darker brown for contrast
+        fontWeight: '700',
     },
-    ingredientInputContainer: {
-        width: '100%',
-    },
-    ingredientInput: {
-        backgroundColor: '#F8F4F0',
-        borderRadius: 10,
-        padding: 12,
-        fontSize: 16,
-        color: '#49351C',
-        borderColor: '#48755C',
+    
+    // Search Bar
+    searchBarContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: theme.mode === 'dark' ? '#333' : '#F8F8F8',
+        borderRadius: 16,
+        paddingHorizontal: 12,
+        paddingVertical: 4,
         borderWidth: 1,
-        marginBottom: 12,
-    },
-    quickSuggestionsContainer: {
+        borderColor: theme.border,
         marginBottom: 16,
+    },
+    searchIcon: {
+        marginRight: 8,
+    },
+    searchInput: {
+        flex: 1,
+        paddingVertical: 12,
+        fontSize: 16,
+        color: theme.text,
+    },
+    addIconBtn: {
+        padding: 4,
+    },
+    
+    // Quick Suggestions
+    quickSuggestionsContainer: {
+        marginBottom: 20,
     },
     suggestionsLabel: {
-        color: '#664E2D',
-        fontSize: 14,
-        marginBottom: 8,
+        color: theme.textSecondary,
+        fontSize: 12,
+        fontWeight: '600',
+        marginBottom: 10,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     suggestionsScroll: {
         flexDirection: 'row',
     },
     suggestionPill: {
-        backgroundColor: '#F5EAE1',
-        borderRadius: 16,
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        marginRight: 8,
+        backgroundColor: theme.surface,
+        borderRadius: 20,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        marginRight: 10,
         borderWidth: 1,
-        borderColor: '#F5EAE1',
+        borderColor: theme.border,
+        flexDirection: 'row',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
     },
     suggestionText: {
-        color: '#49351C',
+        color: theme.text,
         fontSize: 14,
+        fontWeight: '500',
     },
+    
+    // Ingredients Basket
     ingredientsContainer: {
-        marginTop: 8,
+        marginTop: 0,
     },
-    ingredientsRow: {
-        justifyContent: 'flex-start',
+    sectionLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.primary,
+        marginBottom: 10,
     },
     ingredientsGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
+        gap: 8,
     },
-    ingredient: {
+    ingredientChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#DCEFDF',
-        borderRadius: 18,
+        borderRadius: 20,
         paddingVertical: 8,
         paddingHorizontal: 12,
-        margin: 4,
-        maxWidth: '48%',
+        borderWidth: 1,
     },
     ingredientText: {
-        color: '#49351C',
-        marginRight: 6,
+        fontWeight: '600',
         fontSize: 14,
+        marginRight: 8,
     },
-    optionContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-    optionButton: {
-        flex: 1,
-        padding: 14,
-        backgroundColor: 'white',
-        marginHorizontal: 4,
-        borderRadius: 10,
-        alignItems: 'center',
+    removeIconContainer: {
+        width: 16,
+        height: 16,
+        borderRadius: 8,
         justifyContent: 'center',
-        borderColor: '#F5EAE1',
-        borderWidth: 1,
+        alignItems: 'center',
     },
-    selectedOption: {
-        backgroundColor: '#48755C',
+    
+    // Toggle Switch
+    toggleContainer: {
+        flexDirection: 'row',
+        backgroundColor: theme.mode === 'dark' ? '#333' : '#F3F4F6',
+        borderRadius: 16,
+        padding: 4,
     },
-    optionText: {
-        color: 'black',
-        fontWeight: 'bold',
-        textAlign: 'center',
+    toggleButton: {
+        flex: 1,
+        paddingVertical: 12,
+        alignItems: 'center',
+        borderRadius: 14,
     },
-    selectedOptionText: {
-        color: 'white',
+    activeToggle: {
+        backgroundColor: theme.surface,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
     },
-    specialRequestInput: {
-        backgroundColor: '#F8F4F0',
-        borderRadius: 10,
-        padding: 12,
-        fontSize: 16,
-        color: '#49351C',
-        minHeight: 80,
-        textAlignVertical: 'top',
-        borderColor: '#48755C',
-        borderWidth: 1,
+    toggleText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.textSecondary,
     },
+    activeToggleText: {
+        color: theme.primary,
+    },
+    
+    // Meal Type Cards
     mealTypeContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        gap: 12,
     },
-    mealTypeButton: {
+    mealTypeCard: {
         flex: 1,
-        padding: 14,
-        backgroundColor: 'white',
-        marginHorizontal: 4,
-        borderRadius: 10,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderColor: '#F5EAE1',
-        borderWidth: 1,
-    },
-    mealTypeText: {
-        color: 'black',
-        fontWeight: 'bold',
-        textAlign: 'center',
-    },
-    preferencesSummary: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginBottom: 20,
-        paddingHorizontal: 4,
-    },
-    preferenceBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F5EAE1',
+        backgroundColor: theme.surface,
         borderRadius: 16,
-        paddingVertical: 6,
-        paddingHorizontal: 10,
-        marginRight: 8,
+        padding: 16,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: theme.border,
+    },
+    selectedMealTypeCard: {
+        borderColor: theme.primary,
+        backgroundColor: theme.mode === 'dark' ? '#1E3326' : '#F0FDF4',
+    },
+    mealTypeIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: theme.mode === 'dark' ? '#333' : '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
         marginBottom: 8,
     },
-    preferenceBadgeText: {
-        fontSize: 13,
-        color: '#664E2D',
-        marginLeft: 4,
+    selectedMealTypeIconContainer: {
+        backgroundColor: theme.primary,
     },
+    mealTypeText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.text,
+    },
+    selectedMealTypeText: {
+        color: theme.primary,
+    },
+    
+    // Generate Button
     generateButton: {
-        backgroundColor: '#48755C',
+        backgroundColor: theme.primary,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 16,
-        borderRadius: 10,
+        padding: 18,
+        borderRadius: 24,
         marginTop: 10,
-        shadowColor: '#000',
+        marginBottom: 30,
+        shadowColor: theme.primary,
         shadowOffset: {
-            width: 4,
-            height: 4,
+            width: 0,
+            height: 8,
         },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 2,
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
     },
     buttonIcon: {
         marginRight: 8,
     },
     generateButtonText: {
-        color: 'white',
+        color: theme.onPrimary,
         fontSize: 18,
         fontWeight: 'bold',
     },
+    
+    // Resume Card Styles
+    resumeCard: {
+        backgroundColor: theme.surface,
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        shadowColor: theme.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+        borderWidth: 1,
+        borderColor: theme.border,
+    },
+    resumeContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    resumeIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: theme.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    resumeTextContainer: {
+        flex: 1,
+        marginRight: 8,
+    },
+    resumeLabel: {
+        fontSize: 12,
+        color: theme.textSecondary,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 2,
+    },
+    resumeRecipeName: {
+        fontSize: 16,
+        color: theme.text,
+        fontWeight: '700',
+    },
+
     modalOverlay: {
         flex: 1,
         justifyContent: 'flex-end',
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     modalContent: {
-        backgroundColor: '#fff',
+        backgroundColor: theme.surface,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         padding: 20,
@@ -893,12 +1112,12 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         paddingBottom: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#F5EAE1',
+        borderBottomColor: theme.border,
     },
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#49351C',
+        color: theme.text,
     },
     closeButton: {
         padding: 4,
@@ -910,7 +1129,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         marginVertical: 10,
-        color: '#664E2D',
+        color: theme.primary,
     },
     optionsContainer: {
         flexDirection: 'row',
@@ -919,23 +1138,23 @@ const styles = StyleSheet.create({
     },
     preferenceOption: {
         borderWidth: 2,
-        borderColor: '#F5EAE1',
+        borderColor: theme.border,
         borderRadius: 20,
         paddingVertical: 10,
         paddingHorizontal: 16,
         margin: 4,
-        backgroundColor: 'white',
+        backgroundColor: theme.surface,
     },
     selectedPreferenceOption: {
-        backgroundColor: '#DCEFDF',
-        borderColor: '#48755C',
+        backgroundColor: theme.mode === 'dark' ? '#1E3326' : '#DCEFDF',
+        borderColor: theme.primary,
     },
     preferenceOptionText: {
-        color: 'black',
+        color: theme.text,
         fontSize: 15,
     },
     selectedPreferenceOptionText: {
-        color: '#49351C',
+        color: theme.primary,
     },
     modalButtonsContainer: {
         flexDirection: 'row',
@@ -944,7 +1163,7 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     clearButton: {
-        backgroundColor: 'white',
+        backgroundColor: theme.surface,
         padding: 14,
         borderRadius: 10,
         alignItems: 'center',
@@ -953,12 +1172,12 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     clearButtonText: {
-        color: 'red',
+        color: theme.error,
         fontSize: 16,
         fontWeight: 'bold',
     },
     applyButton: {
-        backgroundColor: '#48755C',
+        backgroundColor: theme.primary,
         padding: 14,
         borderRadius: 10,
         alignItems: 'center',
@@ -967,8 +1186,32 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     applyButtonText: {
-        color: 'white',
+        color: theme.onPrimary,
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    // New Badge Styles
+    preferencesSummary: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 4,
+        marginBottom: 4,
+    },
+    preferenceBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: theme.mode === 'dark' ? '#1E3326' : '#F0FDF4',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: theme.primary,
+    },
+    preferenceBadgeText: {
+        fontSize: 12,
+        color: theme.primary,
+        fontWeight: '600',
+        marginLeft: 6,
     },
 });
