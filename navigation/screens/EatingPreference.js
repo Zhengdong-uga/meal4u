@@ -215,7 +215,7 @@ export default function EatingPreference({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         <View style={styles.sectionWrapper}>
           <PreferenceItem
             title="Eating Goals"

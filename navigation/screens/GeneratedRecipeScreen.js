@@ -150,7 +150,7 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: theme.background,
   },
   scrollContainer: {
-    paddingBottom: 20,
+    paddingBottom: 100, // Add padding for floating tab bar
     paddingTop: 10,
   },
 });

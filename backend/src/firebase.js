@@ -1,7 +1,7 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
-  getAuth,
   initializeAuth,
+  getAuth,
   getReactNativePersistence,
   GoogleAuthProvider,
   OAuthProvider,
@@ -11,22 +11,23 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
 
 // Firebase config
 const firebaseConfig = Constants.expoConfig.extra.firebaseApi;
 
-// Initialize Firebase app
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase app (avoid re-initializing during fast refresh)
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// ✅ Platform-specific auth initialization
+// Initialize Auth with AsyncStorage persistence (per Expo SDK 54 docs)
+// Use try-catch to handle case where auth is already initialized
 let auth;
-if (Platform.OS === 'web') {
-  auth = getAuth(app); // for web, simple getAuth
-} else {
+try {
   auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage),
   });
+} catch (error) {
+  // If auth is already initialized, get the existing instance
+  auth = getAuth(app);
 }
 
 // ✅ Google Sign-In
@@ -71,4 +72,6 @@ const signInWithApple = async () => {
   }
 };
 
-export { auth, signInWithGoogle, signInWithApple };
+const firebaseApp = app;
+
+export { auth, signInWithGoogle, signInWithApple, firebaseApp };

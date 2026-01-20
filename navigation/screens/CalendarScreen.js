@@ -18,8 +18,8 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../../backend/src/firebase';
 import { doc, getDoc, updateDoc, getFirestore, setDoc } from 'firebase/firestore';
-import { PanGestureHandler, State, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, useAnimatedGestureHandler } from 'react-native-reanimated';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import RecipeCard from '../../components/RecipeCard';
 import EmptyState from '../../components/EmptyState';
 import HapticsService from '../../utils/haptics';
@@ -366,16 +366,15 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
     const mealType = meal?.type;
     const oldTime = meal?.time;
 
-    const panGesture = useAnimatedGestureHandler({
-      onStart: (_, ctx) => {
+    const panGesture = Gesture.Pan()
+      .onStart(() => {
         runOnJS(HapticsService.medium)();
         isDragging.value = true;
-        ctx.startY = translateY.value;
-      },
-      onActive: (event, ctx) => {
-        translateY.value = ctx.startY + event.translationY;
-      },
-      onEnd: (event, ctx) => {
+      })
+      .onUpdate((event) => {
+        translateY.value = event.translationY;
+      })
+      .onEnd(() => {
         runOnJS(HapticsService.light)();
         isDragging.value = false;
         // Snap to nearest row
@@ -384,8 +383,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
         
         runOnJS(handleDropMeal)(mealName, mealType, oldTime, hour, newHour);
         translateY.value = withSpring(0); // Reset position after drop
-      },
-    });
+      });
 
     const animatedStyle = useAnimatedStyle(() => {
       return {
@@ -398,7 +396,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
     });
 
     return (
-      <PanGestureHandler onGestureEvent={panGesture}>
+      <GestureDetector gesture={panGesture}>
         <Animated.View style={[
             styles.eventCard,
             animatedStyle,
@@ -434,7 +432,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
                 <Ionicons name="trash-bin-outline" size={16} color={theme.error} />
             </TouchableOpacity>
         </Animated.View>
-      </PanGestureHandler>
+      </GestureDetector>
     );
   };
 
@@ -540,8 +538,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
     );
   };
 
-  // State for FAB menu
-  const [fabOpen, setFabOpen] = useState(false);
+  // Removed FAB state - using header button instead
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -562,7 +559,7 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
              <Text style={styles.monthText}>
                {new Date(currentWeek.getTime() + 86400000 * 2).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
              </Text>
-             <Ionicons name="chevron-down-outline" size={20} color="#000" />
+             <Ionicons name="chevron-down-outline" size={20} color={theme.text} />
            </View>
         </View>
 
@@ -628,37 +625,17 @@ export default function EnhancedCalendarScreen({ navigation, route }) {
         )}
       </View>
 
-      {/* FAB */}
+      {/* Floating Add Button - Above Nav Bar */}
       <TouchableOpacity 
-        style={styles.fab}
+        style={styles.floatingAddButton}
         onPress={() => {
             HapticsService.light();
-            setFabOpen(!fabOpen);
+            setModalVisible(true);
         }}
+        activeOpacity={0.8}
       >
-        <Ionicons name={fabOpen ? "close-outline" : "add-outline"} size={30} color="#FFF" />
+        <Ionicons name="add" size={30} color={theme.onPrimary} />
       </TouchableOpacity>
-      
-      {fabOpen && (
-        <View style={styles.fabMenu}>
-          {['Breakfast', 'Lunch', 'Snacks', 'Dinner'].map((type) => (
-             <TouchableOpacity 
-               key={type}
-               style={styles.fabMenuItem}
-               onPress={() => {
-                 HapticsService.light();
-                 setFabOpen(false);
-                 showAddMealModal(type.toLowerCase());
-               }}
-             >
-               <Text style={styles.fabMenuText}>{type}</Text>
-               <View style={styles.fabMenuIcon}>
-                 <Ionicons name="restaurant-outline" size={20} color="#FFF" />
-               </View>
-             </TouchableOpacity>
-          ))}
-        </View>
-      )}
 
       {/* Recipe Details Modal */}
       <Modal
@@ -791,6 +768,23 @@ const createStyles = (theme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  floatingAddButton: {
+    position: 'absolute',
+    bottom: 90, // Just above the tab bar (70 height + 20 padding)
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 100,
+  },
   monthText: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -857,6 +851,7 @@ const createStyles = (theme) => StyleSheet.create({
   timelineContent: {
     paddingVertical: 20,
     paddingHorizontal: 20,
+    paddingBottom: 100, // Add padding for floating tab bar
   },
   timeRow: {
     flexDirection: 'row',
@@ -917,65 +912,15 @@ const createStyles = (theme) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fab: {
-    position: 'absolute',
-    bottom: 30,
-    right: 30,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: theme.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    zIndex: 100,
-  },
-  fabMenu: {
-    position: 'absolute',
-    bottom: 100,
-    right: 30,
-    alignItems: 'flex-end',
-    zIndex: 99,
-  },
-  fabMenuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  fabMenuText: {
-    backgroundColor: theme.surface,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    marginRight: 10,
-    elevation: 2,
-    color: theme.primary,
-    fontWeight: '600',
-  },
-  fabMenuIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-  },
-
-  // Modal styles
-  modalContainer: {
-    flex: 1,
-    backgroundColor: theme.background,
-  },
   modalScrollView: {
     flex: 1,
     backgroundColor: theme.background,
   },
-
+  modalContainer: {
+    flex: 1,
+    backgroundColor: theme.background,
+  },
+  // Modal styles
   // Add Meal Modal
   centeredView: {
     flex: 1,

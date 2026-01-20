@@ -14,9 +14,10 @@ export const HapticsService = {
   light: async () => {
     if (isHapticsAvailable) {
       try {
+        console.log('🔔 Haptic: Light');
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       } catch (e) {
-        // Fail silently
+        console.warn('Haptic light failed:', e);
       }
     }
   },
@@ -25,9 +26,10 @@ export const HapticsService = {
   medium: async () => {
     if (isHapticsAvailable) {
       try {
+        console.log('🔔 Haptic: Medium');
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       } catch (e) {
-        // Fail silently
+        console.warn('Haptic medium failed:', e);
       }
     }
   },
@@ -47,9 +49,10 @@ export const HapticsService = {
   success: async () => {
     if (isHapticsAvailable) {
       try {
+        console.log('🔔 Haptic: Success');
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch (e) {
-        // Fail silently
+        console.warn('Haptic success failed:', e);
       }
     }
   },

@@ -228,7 +228,7 @@ export default function SavedRecipesScreen({ navigation, route }) {
             const recipeWithUser = {
                 ...recipe,
                 userId: currentUser.uid,
-                createdAt: new Date()
+                createdAt: new Date().toISOString()
             };
             
             // Add to Firestore
@@ -534,7 +534,7 @@ const createStyles = (theme) => StyleSheet.create({
     },
     recipeListContent: {
         padding: 16,
-        paddingBottom: 24,
+        paddingBottom: 100, // Add padding for floating tab bar
     },
     loadingContainer: {
         flex: 1,
