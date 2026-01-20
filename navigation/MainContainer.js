@@ -7,9 +7,9 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useState, useEffect } from 'react';
-import { onAuthStateChanged, getAuth } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, getFirestore } from 'firebase/firestore';
-import firebaseApp from '../backend/src/firebase';
+import { firebaseApp, auth } from '../backend/src/firebase';
 import { useTheme } from '../context/ThemeContext';
 import CustomTabBar from './CustomTabBar';
 
@@ -112,7 +112,7 @@ function MainContainer() {
   const [isNewUser, setIsNewUser] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(getAuth(firebaseApp), async (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       
       if (currentUser) {

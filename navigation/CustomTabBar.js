@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Platform, TouchableOpacity, Dimensions, Animated } from 'react-native';
+import { GlassView } from 'expo-glass-effect';
 import { useTheme } from '../context/ThemeContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SHADOWS } from '../constants/theme';
@@ -132,12 +133,16 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.tabBar, { 
-        backgroundColor: theme.surface,
-        borderColor: theme.border,
-        ...SHADOWS.medium,
-        shadowColor: theme.mode === 'dark' ? '#000' : theme.primary,
-      }]}>
+      <GlassView
+        glassEffectStyle="regular"
+        style={[styles.tabBar, { 
+          borderColor: theme.border,
+          ...SHADOWS.medium,
+          shadowColor: theme.mode === 'dark' ? '#000' : theme.primary,
+          overflow: 'hidden',
+          backgroundColor: Platform.OS === 'android' ? theme.surface : 'transparent',
+        }]}
+      >
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           
@@ -207,7 +212,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             />
           );
         })}
-      </View>
+      </GlassView>
     </View>
   );
 };

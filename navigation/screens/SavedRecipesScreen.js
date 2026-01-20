@@ -228,7 +228,7 @@ export default function SavedRecipesScreen({ navigation, route }) {
             const recipeWithUser = {
                 ...recipe,
                 userId: currentUser.uid,
-                createdAt: new Date()
+                createdAt: new Date().toISOString()
             };
             
             // Add to Firestore

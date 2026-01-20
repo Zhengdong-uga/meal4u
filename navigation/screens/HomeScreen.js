@@ -10,6 +10,7 @@ import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
+import { getAvatarSource } from '../../utils/AvatarUtils';
 
 export default function HomeScreen({ navigation }) {
   const { theme } = useTheme();
@@ -17,6 +18,7 @@ export default function HomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userName, setUserName] = useState('');
+  const [userAvatar, setUserAvatar] = useState(null);
 
   const getLocalDateString = (date = new Date()) => {
     return date.getFullYear() + "-" +
@@ -38,6 +40,7 @@ export default function HomeScreen({ navigation }) {
           if (userData.name) {
             setUserName(userData.name.split(' ')[0]); // First name
           }
+          setUserAvatar(userData.avatarId || 1);
           
           // Fetch meals from Firestore
           if (userData.mealPlan) {
@@ -164,7 +167,14 @@ export default function HomeScreen({ navigation }) {
              HapticsService.light();
              navigation.navigate('Profile');
           }}>
-             <Ionicons name="person-circle-outline" size={40} color={COLORS.primary || '#48755C'} />
+             {userAvatar ? (
+               <Image 
+                 source={getAvatarSource(userAvatar)} 
+                 style={{ width: 40, height: 40, borderRadius: 20 }}
+               />
+             ) : (
+               <Ionicons name="person-circle-outline" size={40} color={COLORS.primary || '#48755C'} />
+             )}
           </TouchableOpacity>
         </View>
 

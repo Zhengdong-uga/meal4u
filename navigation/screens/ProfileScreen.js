@@ -22,7 +22,9 @@ import { getAuth, signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../../backend/src/firebase'; // Remove firestore import from here
 import { doc, getDoc, setDoc, updateDoc, getFirestore } from 'firebase/firestore';
 import HapticsService from '../../utils/haptics';
+import { AVATARS, getAvatarSource } from '../../utils/AvatarUtils';
 import { useTheme } from '../../context/ThemeContext';
+
 // Import the saved recipes mockup data for Recipe Gallery
 import { savedRecipes as mockSavedRecipes } from '../../data/savedRecipeData.js';
 
@@ -110,16 +112,6 @@ export default function ProfileScreen({ navigation }) {
             resetModalPosition();
         });
     };
-
-    // Diet-themed avatars
-    const avatarOptions = [
-        { id: 1, name: 'Default', source: require('../../assets/avatar.png') },
-        { id: 2, name: 'Vegetarian', source: require('../../assets/avatar.png') },
-        { id: 3, name: 'Vegan', source: require('../../assets/avatar.png') },
-        { id: 4, name: 'Pescatarian', source: require('../../assets/avatar.png') },
-        { id: 5, name: 'Keto', source: require('../../assets/avatar.png') },
-        { id: 6, name: 'Paleo', source: require('../../assets/avatar.png') },
-    ];
 
     // This function only fetches the user stats, not the recipes
     const fetchUserStats = async () => {
@@ -302,7 +294,7 @@ export default function ProfileScreen({ navigation }) {
                         onPress={handleAvatarPress}
                     >
                         <Image
-                            source={userAvatar ? avatarOptions[userAvatar - 1]?.source : avatarOptions[0].source}
+                            source={getAvatarSource(userAvatar)}
                             style={styles.avatar}
                         />
                         <View style={styles.cameraIconContainer}>
@@ -457,14 +449,14 @@ export default function ProfileScreen({ navigation }) {
                             <View style={styles.avatarPreviewContainer}>
                                 <View style={styles.avatarPreviewGlow} />
                                 <Image
-                                    source={userAvatar ? avatarOptions[userAvatar - 1]?.source : avatarOptions[0].source}
+                                    source={getAvatarSource(userAvatar)}
                                     style={styles.avatarPreviewImage}
                                 />
                             </View>
 
                             {/* Horizontal Scroll Carousel */}
                             <FlatList
-                                data={avatarOptions}
+                                data={AVATARS}
                                 horizontal
                                 showsHorizontalScrollIndicator={false}
                                 contentContainerStyle={styles.avatarCarouselContainer}
